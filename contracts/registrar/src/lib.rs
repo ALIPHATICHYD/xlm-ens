@@ -5,7 +5,7 @@ mod test;
 use expiry::expiry_from_now;
 use pricing::price_for_label_length;
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, Address, Env, IntoVal, String, Symbol,
+    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, IntoVal, String, Symbol, Vec,
 };
 use xlm_ns_common::soroban::{
     build_xlm_name, extract_label_soroban, validate_label_soroban,
@@ -92,10 +92,42 @@ impl RegistrarContract {
     // recovery or forced-release override.
     pub fn reserve_label(env: Env, label: String) -> Result<(), RegistrarError> {
         validate_label_soroban(&label).map_err(|_| RegistrarError::Validation)?;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Reserved(label), &true);
+        let key = DataKey::Reserved(label.clone());
+        if env.storage().persistent().get::<_, bool>(&key).unwrap_or(false) {
+            env.events().publish(
+                (symbol_short!("reserved"), symbol_short!("skipped")),
+                label,
+            );
+        } else {
+            env.storage().persistent().set(&key, &true);
+            env.events().publish(
+                (symbol_short!("reserved"), symbol_short!("added")),
+                label,
+            );
+        }
         Ok(())
+    }
+
+    pub fn load_reserved_manifest(env: Env, labels: Vec<String>) -> Result<u32, RegistrarError> {
+        let mut added_count = 0;
+        for label in labels.iter() {
+            if validate_label_soroban(&label).is_ok() {
+                let key = DataKey::Reserved(label.clone());
+                if env.storage().persistent().get::<_, bool>(&key).unwrap_or(false) {
+                    env.events().publish(
+                        (symbol_short!("reserved"), symbol_short!("skipped")),
+                        label.clone(),
+                    );
+                } else {
+                    env.storage().persistent().set(&key, &true);
+                    env.events().publish((symbol_short!("reserved"), symbol_short!("added")), label.clone());
+                    added_count += 1;
+                }
+            } else {
+                env.events().publish((symbol_short!("reserved"), symbol_short!("skipped")), label.clone());
+            }
+        }
+        Ok(added_count)
     }
 
     pub fn quote_registration(

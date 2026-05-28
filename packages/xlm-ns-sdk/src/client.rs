@@ -760,6 +760,26 @@ impl XlmNsClient {
         })
     }
 
+    pub async fn load_reserved_manifest(
+        &self,
+        labels: Vec<String>,
+        signer: Option<String>,
+    ) -> Result<TransactionSubmission, SdkError> {
+        if labels.is_empty() {
+            return Err(SdkError::InvalidRequest("labels must not be empty".into()));
+        }
+
+        Ok(TransactionSubmission {
+            tx_hash: "tx_load_manifest_mock".to_string(),
+            status: SubmissionStatus::Submitted,
+            ledger: None,
+            submitted_at: MOCK_REFERENCE_TIMESTAMP,
+            contract_id: self.registrar_contract_id.clone(),
+            network_passphrase: self.network_passphrase.clone(),
+            signer,
+        })
+    }
+
     pub async fn get_treasury_balance(&self) -> Result<u64, SdkError> {
         let _registrar_id = self
             .registrar_contract_id

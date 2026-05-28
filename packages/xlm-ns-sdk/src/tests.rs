@@ -403,4 +403,18 @@ mod tests {
             Some("Test SDF Network ; September 2015".into())
         );
     }
+
+    #[tokio::test]
+    async fn load_reserved_manifest_returns_submission() {
+        let submission = client()
+            .load_reserved_manifest(
+                vec!["admin".to_string(), "root".to_string()],
+                Some("deployer".into()),
+            )
+            .await
+            .unwrap();
+        
+        assert_eq!(submission.status, SubmissionStatus::Submitted);
+        assert_eq!(submission.signer.as_deref(), Some("deployer"));
+    }
 }

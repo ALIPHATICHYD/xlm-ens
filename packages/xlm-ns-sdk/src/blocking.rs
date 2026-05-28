@@ -194,6 +194,14 @@ impl XlmNsBlockingClient {
         self.block_on(self.inner.build_message(request))
     }
 
+    pub fn load_reserved_manifest(
+        &self,
+        labels: Vec<String>,
+        signer: Option<String>,
+    ) -> Result<TransactionSubmission, SdkError> {
+        self.block_on(self.inner.load_reserved_manifest(labels, signer))
+    }
+
     pub fn create_auction(
         &self,
         request: AuctionCreateRequest,

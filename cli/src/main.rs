@@ -30,6 +30,10 @@ struct Cli {
     #[arg(long, value_enum, default_value_t = OutputFormat::Human, global = true)]
     output: OutputFormat,
 
+    /// Simulate the transaction without submitting it
+    #[arg(long, global = true)]
+    dry_run: bool,
+
     /// Override the Soroban RPC URL.
     #[arg(long, global = true)]
     rpc_url: Option<String>,

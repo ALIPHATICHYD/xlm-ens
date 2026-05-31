@@ -1,3 +1,4 @@
+mod events;
 mod test;
 
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env, String, Vec};
@@ -38,7 +39,7 @@ impl NftContract {
         owner: Address,
         metadata_uri: Option<String>,
     ) -> Result<(), NftError> {
-        let key = DataKey::Token(token_id);
+        let key = DataKey::Token(token_id.clone());
         if env.storage().persistent().has(&key) {
             return Err(NftError::AlreadyMinted);
         }
@@ -50,6 +51,7 @@ impl NftContract {
         env.storage().persistent().set(&key, &record);
         append_token_id(&env, &token_id);
         add_owner_token(&env, &owner, &token_id);
+        events::mint(&env, owner.clone(), owner, token_id);
         Ok(())
     }
 
@@ -63,10 +65,24 @@ impl NftContract {
         if record.owner != caller {
             return Err(NftError::Unauthorized);
         }
-        record.approved = Some(approved);
+        record.approved = Some(approved.clone());
         env.storage()
             .persistent()
-            .set(&DataKey::Token(token_id), &record);
+            .set(&DataKey::Token(token_id.clone()), &record);
+        events::approve(&env, caller, approved, token_id);
+        Ok(())
+    }
+
+    pub fn approve_clear(env: Env, token_id: String, caller: Address) -> Result<(), NftError> {
+        let mut record = get_token(&env, &token_id)?;
+        if record.owner != caller {
+            return Err(NftError::Unauthorized);
+        }
+        record.approved = None;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Token(token_id.clone()), &record);
+        events::approve_clear(&env, caller, token_id);
         Ok(())
     }
 
@@ -81,12 +97,34 @@ impl NftContract {
             return Err(NftError::Unauthorized);
         }
         let previous_owner = record.owner.clone();
-        record.owner = new_owner;
+        record.owner = new_owner.clone();
         record.approved = None;
         env.storage()
             .persistent()
-            .set(&DataKey::Token(token_id), &record);
-        reindex_owner_token(env, &previous_owner, &record.owner, &token_id);
+            .set(&DataKey::Token(token_id.clone()), &record);
+        reindex_owner_token(&env, &previous_owner, &record.owner, &token_id);
+        events::transfer(&env, previous_owner, new_owner, token_id);
+        Ok(())
+    }
+
+    pub fn transfer_from(
+        env: Env,
+        spender: Address,
+        owner: Address,
+        recipient: Address,
+        token_id: String,
+    ) -> Result<(), NftError> {
+        let mut record = get_token(&env, &token_id)?;
+        if record.owner != owner || record.approved.as_ref() != Some(&spender) {
+            return Err(NftError::Unauthorized);
+        }
+        record.owner = recipient.clone();
+        record.approved = None;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Token(token_id.clone()), &record);
+        reindex_owner_token(&env, &owner, &record.owner, &token_id);
+        events::transfer(&env, owner, recipient, token_id);
         Ok(())
     }
 
@@ -175,11 +213,11 @@ fn remove_owner_token(env: &Env, owner: &Address, token_id: &String) {
     env.storage().persistent().set(&key, &filtered);
 }
 
-fn reindex_owner_token(env: Env, previous_owner: &Address, new_owner: &Address, token_id: &String) {
+fn reindex_owner_token(env: &Env, previous_owner: &Address, new_owner: &Address, token_id: &String) {
     if previous_owner == new_owner {
         return;
     }
 
-    remove_owner_token(&env, previous_owner, token_id);
-    add_owner_token(&env, new_owner, token_id);
+    remove_owner_token(env, previous_owner, token_id);
+    add_owner_token(env, new_owner, token_id);
 }

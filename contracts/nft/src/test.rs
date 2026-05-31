@@ -1,6 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use soroban_sdk::{testutils::Address as _, Address, Env, String};
+    use soroban_sdk::{
+        symbol_short,
+        testutils::{Address as _, Events},
+        Address, Env, IntoVal, String,
+    };
 
     use crate::{NftContract, NftContractClient};
 
@@ -247,5 +251,119 @@ mod tests {
 
         let token = client.token(&token_id).unwrap();
         assert_eq!(token.approved, Some(approved));
+    }
+
+    #[test]
+    fn test_mint_emits_event() {
+        let env = Env::default();
+        let contract_id = env.register(NftContract, ());
+        let client = NftContractClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        let token_id = String::from_str(&env, "timmy.xlm");
+
+        client.mint(&token_id, &owner, &None::<String>);
+
+        let events = env.events().all();
+        assert_eq!(events.len(), 1);
+        let (_contract_id, topics, data) = events.get(0).unwrap();
+        assert_eq!(topics.get(0).unwrap(), symbol_short!("mint").into_val(&env));
+        assert_eq!(data, token_id.into_val(&env));
+    }
+
+    #[test]
+    fn test_approve_emits_event() {
+        let env = Env::default();
+        let contract_id = env.register(NftContract, ());
+        let client = NftContractClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        let approved = Address::generate(&env);
+        let token_id = String::from_str(&env, "timmy.xlm");
+
+        client.mint(&token_id, &owner, &None::<String>);
+        client.approve(&token_id, &owner, &approved);
+
+        let events = env.events().all();
+        assert_eq!(events.len(), 2);
+        let (_contract_id, topics, data) = events.get(1).unwrap();
+        assert_eq!(
+            topics.get(0).unwrap(),
+            symbol_short!("approve").into_val(&env)
+        );
+        assert_eq!(data, token_id.into_val(&env));
+    }
+
+    #[test]
+    fn test_approve_clear_emits_event() {
+        let env = Env::default();
+        let contract_id = env.register(NftContract, ());
+        let client = NftContractClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        let approved = Address::generate(&env);
+        let token_id = String::from_str(&env, "timmy.xlm");
+
+        client.mint(&token_id, &owner, &None::<String>);
+        client.approve(&token_id, &owner, &approved);
+        client.approve_clear(&token_id, &owner);
+
+        let events = env.events().all();
+        let (_contract_id, topics, data) = events.get(events.len() - 1).unwrap();
+        assert_eq!(
+            topics.get(0).unwrap(),
+            symbol_short!("appr_clr").into_val(&env)
+        );
+        assert_eq!(data, token_id.into_val(&env));
+    }
+
+    #[test]
+    fn test_transfer_owner_emits_event() {
+        let env = Env::default();
+        let contract_id = env.register(NftContract, ());
+        let client = NftContractClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        let new_owner = Address::generate(&env);
+        let token_id = String::from_str(&env, "timmy.xlm");
+
+        client.mint(&token_id, &owner, &None::<String>);
+        client.transfer(&token_id, &owner, &new_owner);
+
+        let events = env.events().all();
+        let (_contract_id, topics, data) = events.get(events.len() - 1).unwrap();
+        assert_eq!(
+            topics.get(0).unwrap(),
+            symbol_short!("transfer").into_val(&env)
+        );
+        assert_eq!(topics.get(1).unwrap(), owner.into_val(&env));
+        assert_eq!(topics.get(2).unwrap(), new_owner.into_val(&env));
+        assert_eq!(data, token_id.into_val(&env));
+    }
+
+    #[test]
+    fn test_transfer_from_emits_event() {
+        let env = Env::default();
+        let contract_id = env.register(NftContract, ());
+        let client = NftContractClient::new(&env, &contract_id);
+
+        let owner = Address::generate(&env);
+        let approved = Address::generate(&env);
+        let recipient = Address::generate(&env);
+        let token_id = String::from_str(&env, "timmy.xlm");
+
+        client.mint(&token_id, &owner, &None::<String>);
+        client.approve(&token_id, &owner, &approved);
+        client.transfer_from(&approved, &owner, &recipient, &token_id);
+
+        let events = env.events().all();
+        let (_contract_id, topics, data) = events.get(events.len() - 1).unwrap();
+        assert_eq!(
+            topics.get(0).unwrap(),
+            symbol_short!("transfer").into_val(&env)
+        );
+        assert_eq!(topics.get(1).unwrap(), owner.into_val(&env));
+        assert_eq!(topics.get(2).unwrap(), recipient.into_val(&env));
+        assert_eq!(data, token_id.into_val(&env));
     }
 }

@@ -4006,6 +4006,7 @@ name = "xlm-ns-sdk"
 version = "0.1.0"
 dependencies = [
  "ed25519-dalek",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "soroban-sdk 23.1.0",
@@ -4013,6 +4014,7 @@ dependencies = [
  "stellar-strkey 0.0.13",
  "stellar-xdr 23.0.0",
  "tokio",
+ "tracing",
  "wiremock",
  "xlm-ns-common",
 ]

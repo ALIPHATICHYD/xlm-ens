@@ -49,7 +49,25 @@ pub enum SdkError {
         operation: &'static str,
         source: SigningError,
     },
+    RateLimitExceeded(RateLimitError),
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RateLimitError {
+    pub retries: u32,
+    pub total_wait_ms: u64,
+}
+
+impl fmt::Display for RateLimitError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "rate limit exceeded after {} retries (waited {}ms)",
+            self.retries, self.total_wait_ms
+        )
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SigningError {
@@ -112,6 +130,7 @@ impl fmt::Display for SdkError {
             Self::SigningFailed { operation, source } => {
                 write!(f, "{operation} signing failed: {source}")
             }
+            Self::RateLimitExceeded(err) => write!(f, "{err}"),
         }
     }
 }
@@ -155,7 +174,8 @@ pub fn is_retryable(err: &SdkError) -> bool {
         | SdkError::ContractInvocationFailed { .. }
         | SdkError::SimulationFailed { .. }
         | SdkError::InsufficientFee { .. }
-        | SdkError::SigningFailed { .. } => false,
+        | SdkError::SigningFailed { .. }
+        | SdkError::RateLimitExceeded { .. } => false,
     }
 }
 

@@ -964,4 +964,40 @@ mod tests {
         let result = renew.await.unwrap();
         assert_eq!(result.name, "retry.xlm");
     }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn retry_surfaces_rate_limit_error_after_exhausting_retries() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .respond_with(ResponseTemplate::new(429))
+            .mount(&mock_server)
+            .await;
+
+        let client = retry_test_client(
+            mock_server.uri(),
+            crate::config::ClientConfig::default()
+                .with_max_retries(2)
+                .with_initial_backoff(Duration::from_millis(10))
+                .with_jitter(false)
+                .with_poll_final_status(false),
+        );
+
+        let err = client
+            .renew(RenewalRequest {
+                name: "retry.xlm".into(),
+                additional_years: 1,
+                signer: None,
+            })
+            .await
+            .unwrap_err();
+
+        match err {
+            SdkError::RateLimitExceeded(details) => {
+                assert_eq!(details.retries, 2);
+                assert_eq!(details.total_wait_ms, 30); // 10ms + 20ms
+            }
+            other => panic!("expected rate limit error, got {other:?}"),
+        }
+    }
 }

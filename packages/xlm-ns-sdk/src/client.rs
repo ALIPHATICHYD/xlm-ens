@@ -148,30 +148,39 @@ impl XlmNsClient {
         F: Fn(Client) -> Fut,
         Fut: Future<Output = Result<T, SdkError>>,
     {
-        use crate::errors::is_retryable;
+        use crate::errors::{is_retryable, RateLimitError};
 
         let rpc = self.rpc_client()?;
-        let retry = &self.config.retry;
+        let retry_config = &self.config.retry;
         let mut attempt = 0u32;
+        let mut total_wait = std::time::Duration::from_secs(0);
 
         loop {
             match f(rpc.clone()).await {
                 Ok(value) => return Ok(value),
-                Err(err) if is_retryable(&err) && attempt < retry.max_retries => {
-                    let delay = retry.sleep_duration(attempt);
+                Err(err) if is_retryable(&err) && attempt < retry_config.max_retries => {
+                    let delay = retry_config.sleep_duration(attempt);
                     tracing::debug!(
-                        operation = operation,
+                        operation,
                         attempt = attempt + 1,
-                        max_retries = retry.max_retries,
-                        delay_ms = delay.as_millis() as u64,
+                        max_retries = retry_config.max_retries,
+                        delay_ms = delay.as_millis(),
                         error = %err,
-                        error_detail = ?err,
                         "rpc call failed; backing off before retry",
                     );
                     tokio::time::sleep(delay).await;
+                    total_wait += delay;
                     attempt += 1;
                 }
-                Err(err) => return Err(err),
+                Err(err) => {
+                    if is_retryable(&err) {
+                        return Err(SdkError::RateLimitExceeded(RateLimitError {
+                            retries: attempt,
+                            total_wait_ms: total_wait.as_millis() as u64,
+                        }));
+                    }
+                    return Err(err);
+                }
             }
         }
     }

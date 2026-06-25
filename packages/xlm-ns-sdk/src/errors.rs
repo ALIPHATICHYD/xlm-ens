@@ -68,7 +68,6 @@ impl fmt::Display for RateLimitError {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SigningError {
     Rejected { reason: String },

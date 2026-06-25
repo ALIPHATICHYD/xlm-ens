@@ -95,13 +95,7 @@ pub struct RegistryContract;
 // NFT contract client interface needed for cross-contract calls.
 #[contractclient(name = "NftClient")]
 pub trait Nft {
-    fn mint(
-        env: Env,
-        name: String,
-        owner: Address,
-        metadata_uri: Option<String>,
-        expires_at: u64,
-    );
+    fn mint(env: Env, name: String, owner: Address, metadata_uri: Option<String>, expires_at: u64);
     fn sync_owner(env: Env, name: String, new_owner: Address);
     fn sync_expiry(env: Env, name: String, new_expiry: u64);
     fn burn(env: Env, name: String);
@@ -510,9 +504,7 @@ fn get_nft_client(env: &Env) -> Option<NftClient> {
     env.storage()
         .instance()
         .get::<_, Address>(&DataKey::NftContract)
-        .map(|addr| {
-            NftClient::new(env, &addr)
-        })
+        .map(|addr| NftClient::new(env, &addr))
 }
 
 fn put_entry(env: &Env, name: &String, entry: &RegistryEntry) {

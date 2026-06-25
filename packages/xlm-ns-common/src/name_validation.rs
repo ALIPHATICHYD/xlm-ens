@@ -59,8 +59,7 @@ impl fmt::Display for NameValidationError {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for NameValidationError {}
+impl core::error::Error for NameValidationError {}
 
 /// Parsed, validated name. Labels are ordered left-to-right (leaf first).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -179,6 +178,11 @@ pub fn validate_name_with_reserved(
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
+    use alloc::string::ToString;
+    use alloc::{format, vec};
+
     use super::*;
     use crate::constants::{MAX_NAME_LENGTH, MIN_NAME_LENGTH};
     use proptest::prelude::*;

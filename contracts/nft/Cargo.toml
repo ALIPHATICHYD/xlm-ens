@@ -12,3 +12,4 @@ soroban-sdk = { version = "=26.0.0-rc.1", features = ["alloc"] }
 
 [dev-dependencies]
 soroban-sdk = { version = "=26.0.0-rc.1", features = ["testutils"] }
+xlm-ns-registry = { path = "../../contracts/registry" }

@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use soroban_sdk::{testutils::Address as _, testutils::Events as _, Address, Env, String};
 
     use crate::{

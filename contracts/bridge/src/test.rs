@@ -1,5 +1,9 @@
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
+    use std::string::ToString;
+
     use soroban_sdk::{Env, String};
 
     use crate::{BridgeContract, BridgeContractClient};

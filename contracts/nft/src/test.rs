@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use soroban_sdk::{
-        symbol_short,
         testutils::{Address as _, Events},
-        Address, Env, IntoVal, String,
+        Address, Env, String,
     };
 
     use crate::{NftContract, NftContractClient};
@@ -440,7 +441,11 @@ mod tests {
         let first = &topics[0];
         match first {
             soroban_sdk::xdr::ScVal::Symbol(sym) => {
-                assert_eq!(sym.to_string(), expected, "event symbol mismatch");
+                assert_eq!(
+                    sym.to_utf8_string().unwrap(),
+                    expected,
+                    "event symbol mismatch"
+                );
             }
             other => panic!("expected Symbol topic, got {:?}", other),
         }
@@ -633,5 +638,194 @@ mod tests {
         let contract_id = env.register(NftContract, ());
         let client = NftContractClient::new(&env, &contract_id);
         assert_eq!(client.version(), 1);
+    }
+
+    // ── NFT metadata (issue #443) ─────────────────────────────────────────────
+
+    mod metadata_tests {
+        use soroban_sdk::{
+            testutils::{Address as _, Ledger},
+            Address, Env, String,
+        };
+        use xlm_ns_registry::{RegistryContract, RegistryContractClient};
+
+        use crate::{NftContract, NftContractClient};
+
+        fn setup(env: &Env) -> (NftContractClient, RegistryContractClient, Address) {
+            env.mock_all_auths();
+            let admin = Address::generate(env);
+
+            let nft_id = env.register(NftContract, ());
+            let nft = NftContractClient::new(env, &nft_id);
+            nft.initialize(&admin);
+
+            let registry_id = env.register(RegistryContract, ());
+            let registry = RegistryContractClient::new(env, &registry_id);
+
+            nft.set_registry(&admin, &registry_id);
+
+            (nft, registry, admin)
+        }
+
+        #[test]
+        fn metadata_returns_correct_registration_and_expiry_from_registry() {
+            let env = Env::default();
+            let (nft, registry, _admin) = setup(&env);
+
+            let owner = Address::generate(&env);
+            let token_id = String::from_str(&env, "timmy.xlm");
+
+            let now: u64 = 1_000_000;
+            let expires_at: u64 = now + 31_536_000;
+            let grace_ends: u64 = expires_at + 2_592_000;
+
+            env.ledger().set_timestamp(now);
+
+            registry.register(
+                &token_id,
+                &owner,
+                &None,
+                &None,
+                &now,
+                &expires_at,
+                &grace_ends,
+            );
+
+            nft.mint(&token_id, &owner, &None::<String>);
+
+            let meta = nft.metadata(&token_id, &now).unwrap();
+            assert_eq!(meta.registration_date, now);
+            assert_eq!(meta.expiry_date, expires_at);
+            assert_eq!(meta.owner, owner);
+            assert!(!meta.is_expired);
+        }
+
+        #[test]
+        fn metadata_is_expired_true_when_past_expiry() {
+            let env = Env::default();
+            let (nft, registry, _admin) = setup(&env);
+
+            let owner = Address::generate(&env);
+            let token_id = String::from_str(&env, "timmy.xlm");
+
+            let now: u64 = 1_000_000;
+            let expires_at: u64 = now + 31_536_000;
+            let grace_ends: u64 = expires_at + 2_592_000;
+
+            env.ledger().set_timestamp(now);
+
+            registry.register(
+                &token_id,
+                &owner,
+                &None,
+                &None,
+                &now,
+                &expires_at,
+                &grace_ends,
+            );
+
+            nft.mint(&token_id, &owner, &None::<String>);
+
+            let after_expiry = expires_at + 1;
+            let meta = nft.metadata(&token_id, &after_expiry).unwrap();
+            assert!(meta.is_expired);
+        }
+
+        #[test]
+        fn metadata_is_expired_false_when_before_expiry() {
+            let env = Env::default();
+            let (nft, registry, _admin) = setup(&env);
+
+            let owner = Address::generate(&env);
+            let token_id = String::from_str(&env, "timmy.xlm");
+
+            let now: u64 = 1_000_000;
+            let expires_at: u64 = now + 31_536_000;
+            let grace_ends: u64 = expires_at + 2_592_000;
+
+            env.ledger().set_timestamp(now);
+
+            registry.register(
+                &token_id,
+                &owner,
+                &None,
+                &None,
+                &now,
+                &expires_at,
+                &grace_ends,
+            );
+
+            nft.mint(&token_id, &owner, &None::<String>);
+
+            let before_expiry = expires_at - 1;
+            let meta = nft.metadata(&token_id, &before_expiry).unwrap();
+            assert!(!meta.is_expired);
+        }
+
+        #[test]
+        fn metadata_returns_none_when_registry_not_configured() {
+            let env = Env::default();
+            env.mock_all_auths();
+
+            let nft_id = env.register(NftContract, ());
+            let nft = NftContractClient::new(&env, &nft_id);
+            let admin = Address::generate(&env);
+            nft.initialize(&admin);
+
+            let owner = Address::generate(&env);
+            let token_id = String::from_str(&env, "timmy.xlm");
+
+            nft.mint(&token_id, &owner, &None::<String>);
+
+            assert_eq!(nft.metadata(&token_id, &1_000_000), None);
+        }
+
+        #[test]
+        fn metadata_returns_none_for_nonexistent_token() {
+            let env = Env::default();
+            let (nft, _registry, _admin) = setup(&env);
+
+            let token_id = String::from_str(&env, "unknown.xlm");
+            assert_eq!(nft.metadata(&token_id, &1_000_000), None);
+        }
+
+        #[test]
+        fn refresh_name_data_updates_cache_after_renewal() {
+            let env = Env::default();
+            let (nft, registry, _admin) = setup(&env);
+
+            let owner = Address::generate(&env);
+            let token_id = String::from_str(&env, "timmy.xlm");
+
+            let now: u64 = 1_000_000;
+            let expires_at: u64 = now + 31_536_000;
+            let grace_ends: u64 = expires_at + 2_592_000;
+
+            env.ledger().set_timestamp(now);
+
+            registry.register(
+                &token_id,
+                &owner,
+                &None,
+                &None,
+                &now,
+                &expires_at,
+                &grace_ends,
+            );
+
+            nft.mint(&token_id, &owner, &None::<String>);
+
+            let initial_meta = nft.metadata(&token_id, &now).unwrap();
+            assert_eq!(initial_meta.expiry_date, expires_at);
+
+            let new_expires_at: u64 = expires_at + 31_536_000;
+            let new_grace_ends: u64 = new_expires_at + 2_592_000;
+            registry.renew(&token_id, &owner, &new_expires_at, &new_grace_ends, &now);
+
+            nft.refresh_name_data(&token_id);
+
+            let refreshed_meta = nft.metadata(&token_id, &now).unwrap();
+            assert_eq!(refreshed_meta.expiry_date, new_expires_at);
+        }
     }
 }

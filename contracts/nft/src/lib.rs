@@ -3,9 +3,10 @@ mod events;
 mod test;
 
 use soroban_sdk::{
-    contract, contracterror, contractevent, contractimpl, contracttype, symbol_short, Address,
-    Bytes, BytesN, Env, String, Vec,
+    contract, contracterror, contractevent, contractimpl, contracttype, Address, Bytes, BytesN,
+    Env, IntoVal, String, Symbol, Vec,
 };
+use xlm_ns_common::RegistryEntry;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[contracttype]
@@ -13,6 +14,25 @@ pub struct TokenRecord {
     pub owner: Address,
     pub approved: Option<Address>,
     pub metadata_uri: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct NameRecord {
+    pub registration_date: u64,
+    pub expiry_date: u64,
+    pub target_address: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[contracttype]
+pub struct TokenMetadata {
+    pub token_id: String,
+    pub owner: Address,
+    pub registration_date: u64,
+    pub expiry_date: u64,
+    pub is_expired: bool,
+    pub target_address: Option<String>,
 }
 
 #[derive(Clone)]
@@ -23,6 +43,8 @@ enum DataKey {
     OwnerTokens(Address),
     Admin,
     ContractVersion,
+    NameData(String),
+    Registry,
 }
 
 #[contracterror]
@@ -33,6 +55,7 @@ pub enum NftError {
     NotFound = 2,
     Unauthorized = 3,
     UpgradeFailed = 4,
+    NotInitialized = 5,
 }
 
 pub const CONTRACT_VERSION: u32 = 1;
@@ -106,6 +129,20 @@ impl NftContract {
         Ok(())
     }
 
+    pub fn set_registry(env: Env, admin: Address, registry: Address) -> Result<(), NftError> {
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(NftError::NotInitialized)?;
+        if stored_admin != admin {
+            return Err(NftError::Unauthorized);
+        }
+        admin.require_auth();
+        env.storage().instance().set(&DataKey::Registry, &registry);
+        Ok(())
+    }
+
     pub fn mint(
         env: Env,
         token_id: String,
@@ -124,7 +161,71 @@ impl NftContract {
         env.storage().persistent().set(&key, &record);
         append_token_id(&env, &token_id);
         add_owner_token(&env, &owner, &token_id);
+
+        if let Ok(registry) = get_registry(&env) {
+            let now_unix = env.ledger().timestamp();
+            let entry = env.invoke_contract::<RegistryEntry>(
+                &registry,
+                &Symbol::new(&env, "resolve"),
+                (token_id.clone(), now_unix).into_val(&env),
+            );
+            let name_record = NameRecord {
+                registration_date: entry.registered_at,
+                expiry_date: entry.expires_at,
+                target_address: entry.target_address,
+            };
+            env.storage()
+                .persistent()
+                .set(&DataKey::NameData(token_id.clone()), &name_record);
+        }
+
         events::mint(&env, owner.clone(), owner, token_id);
+        Ok(())
+    }
+
+    pub fn metadata(env: Env, token_id: String, now_unix: u64) -> Option<TokenMetadata> {
+        let token: TokenRecord = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Token(token_id.clone()))?;
+        let name_record: NameRecord = env
+            .storage()
+            .persistent()
+            .get(&DataKey::NameData(token_id.clone()))?;
+        let is_expired = now_unix > name_record.expiry_date;
+        Some(TokenMetadata {
+            token_id,
+            owner: token.owner,
+            registration_date: name_record.registration_date,
+            expiry_date: name_record.expiry_date,
+            is_expired,
+            target_address: name_record.target_address,
+        })
+    }
+
+    pub fn refresh_name_data(env: Env, token_id: String) -> Result<(), NftError> {
+        let registry = get_registry(&env)?;
+        if !env
+            .storage()
+            .persistent()
+            .has(&DataKey::Token(token_id.clone()))
+        {
+            return Err(NftError::NotFound);
+        }
+        let now_unix = env.ledger().timestamp();
+        let entry = env.invoke_contract::<RegistryEntry>(
+            &registry,
+            &Symbol::new(&env, "resolve"),
+            (token_id.clone(), now_unix).into_val(&env),
+        );
+        let name_record = NameRecord {
+            registration_date: entry.registered_at,
+            expiry_date: entry.expires_at,
+            target_address: entry.target_address,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::NameData(token_id), &name_record);
         Ok(())
     }
 
@@ -234,6 +335,13 @@ impl NftContract {
             .get::<_, TokenRecord>(&DataKey::Token(token_id))
             .and_then(|record| record.metadata_uri)
     }
+}
+
+fn get_registry(env: &Env) -> Result<Address, NftError> {
+    env.storage()
+        .instance()
+        .get(&DataKey::Registry)
+        .ok_or(NftError::NotInitialized)
 }
 
 fn get_token(env: &Env, token_id: &String) -> Result<TokenRecord, NftError> {

@@ -1,5 +1,9 @@
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
+    use std::format;
+
     use soroban_sdk::{testutils::Address as _, Address, Env, String, Vec};
     use xlm_ns_common::{MAX_TEXT_RECORDS, MAX_TEXT_RECORD_VALUE_LENGTH};
 

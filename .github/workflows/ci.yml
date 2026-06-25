@@ -10,6 +10,28 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  changelog:
+    name: Changelog Check
+    runs-on: ubuntu-latest
+    # Only run on pull requests — push to main is exempt (the PR already passed).
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch enough history to compute the merge-base against the target branch.
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Run changelog check
+        env:
+          # PRs labelled 'changelog-exempt' skip the requirement.
+          CHANGELOG_EXEMPT: ${{ contains(github.event.pull_request.labels.*.name, 'changelog-exempt') }}
+        run: |
+          BASE=$(git merge-base origin/${{ github.base_ref }} HEAD)
+          bash scripts/check-changelog.sh "$BASE"
+
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest

@@ -1,0 +1,400 @@
+# Changelog
+
+All notable changes to xlm-ens are documented in this file.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Each contract tracks its own on-chain `CONTRACT_VERSION` constant independently
+from the Cargo package version. The Cargo version reflects the client-facing API
+(SDK, CLI); the contract version gates on-chain storage migrations.
+
+---
+
+## [Unreleased]
+
+_Changes on `main` that have not been cut into a versioned release._
+
+### Registry
+
+_(no unreleased changes)_
+
+### Registrar
+
+_(no unreleased changes)_
+
+### Resolver
+
+_(no unreleased changes)_
+
+### Auction
+
+_(no unreleased changes)_
+
+### Subdomain
+
+_(no unreleased changes)_
+
+### NFT
+
+_(no unreleased changes)_
+
+### Bridge
+
+_(no unreleased changes)_
+
+### SDK (`xlm-ns-sdk`)
+
+_(no unreleased changes)_
+
+### CLI (`xlm-ns-cli`)
+
+_(no unreleased changes)_
+
+---
+
+## [0.1.0] — Testnet Beta Baseline
+
+_Initial public API surface for all seven Soroban contracts, the Rust SDK, and
+the CLI. All contracts are at on-chain `CONTRACT_VERSION = 1`._
+
+### Registry — Added
+
+**Contract:** `xlm-ns-registry` · On-chain version: `1`
+
+Functions:
+
+| Function | Signature | Auth |
+|----------|-----------|------|
+| `initialize` | `(env, admin: Address) → Result<(), RegistryError>` | None (once) |
+| `version` | `(env) → u32` | None |
+| `get_version` | `(env) → u32` | None |
+| `upgrade` | `(env, new_wasm_hash: BytesN<32>, migration_data: Bytes) → Result<(), RegistryError>` | admin |
+| `register` | `(env, name: String, owner: Address, resolver: Option<String>, target_address: Option<String>, metadata_uri: Option<String>, expires_at: u64, grace_period_ends_at: u64, now_unix: u64) → Result<(), RegistryError>` | owner |
+| `resolve` | `(env, name: String, now_unix: u64) → Result<RegistryEntry, RegistryError>` | None |
+| `name_state` | `(env, name: String, now_unix: u64) → NameState` | None |
+| `check_owner` | `(env, name: String, caller: Address, now_unix: u64) → Result<(), RegistryError>` | None |
+| `transfer` | `(env, name: String, caller: Address, new_owner: Address, now_unix: u64) → Result<(), RegistryError>` | caller |
+| `set_resolver` | `(env, name: String, caller: Address, resolver: String, now_unix: u64) → Result<(), RegistryError>` | caller |
+| `set_target_address` | `(env, name: String, caller: Address, target_address: String, now_unix: u64) → Result<(), RegistryError>` | caller |
+| `set_metadata` | `(env, name: String, caller: Address, metadata_uri: String, now_unix: u64) → Result<(), RegistryError>` | caller |
+| `renew` | `(env, name: String, caller: Address, new_expires_at: u64, new_grace_period_ends_at: u64, now_unix: u64) → Result<(), RegistryError>` | caller |
+| `burn` | `(env, name: String, caller: Address, now_unix: u64) → Result<(), RegistryError>` | caller (active) / none (claimable) |
+| `names_for_owner` | `(env, owner: Address) → Vec<String>` | None |
+| `audit_owner_index` | `(env, owner: Address) → Vec<String>` | None |
+| `supports_admin_recovery` | `(env) → bool` | None |
+| `storage_schema_version` | `(env) → u32` | None |
+
+Types:
+
+```rust
+struct RegistryEntry {
+    name: String,
+    owner: Address,
+    resolver: Option<String>,
+    target_address: Option<String>,
+    metadata_uri: Option<String>,
+    ttl_seconds: u64,
+    registered_at: u64,
+    expires_at: u64,
+    grace_period_ends_at: u64,
+    transfer_count: u32,
+}
+
+enum NameState { Missing, Active, GracePeriod, Claimable }
+
+event ContractUpgraded { old_version: u32, new_version: u32, admin: Address }
+```
+
+Errors: `RegistryError` — `AlreadyRegistered=1`, `NotFound=2`, `NotYetClaimable=3`,
+`NotActive=4`, `Unauthorized=5`, `MetadataTooLong=6`, `Validation=7`,
+`InvalidExpiry=8`, `InvalidGracePeriod=9`, `UpgradeFailed=10`
+
+---
+
+### Registrar — Added
+
+**Contract:** `xlm-ns-registrar` · On-chain version: `1`
+
+Functions:
+
+| Function | Signature | Auth |
+|----------|-----------|------|
+| `initialize` | `(env, registry: Address, admin: Address) → Result<(), RegistrarError>` | None (once) |
+| `version` | `(env) → u32` | None |
+| `get_version` | `(env) → u32` | None |
+| `upgrade` | `(env, new_wasm_hash: BytesN<32>, migration_data: Bytes) → Result<(), RegistrarError>` | admin |
+| `register` | `(env, name: String, owner: Address, years: u64, fee: u64, now_unix: u64) → Result<(), RegistrarError>` | owner |
+| `renew` | `(env, name: String, caller: Address, years: u64, fee: u64, now_unix: u64) → Result<(), RegistrarError>` | caller |
+| `quote_registration` | `(env, label: String, years: u64, now_unix: u64) → Result<RegistrationQuote, RegistrarError>` | None |
+| `quote_renewal` | `(env, name: String, years: u64, now_unix: u64) → Result<RenewalQuote, RegistrarError>` | None |
+| `reserve_label` | `(env, label: String) → Result<(), RegistrarError>` | None |
+| `load_reserved_manifest` | `(env, labels: Vec<String>) → Result<u32, RegistrarError>` | None |
+| `pricing_policy_version` | `(env) → u32` | None |
+| `registration` | `(env, name: String) → Option<RegistrationRecord>` | None |
+| `is_available` | `(env, label: String, now_unix: u64) → bool` | None |
+| `treasury_balance` | `(env) → u64` | None |
+| `fee_metrics` | `(env) → RegistrarMetrics` | None |
+| `accounting_report` | `(env) → RegistrarMetrics` | None |
+| `registration_status` | `(env, label: String, now_unix: u64) → RegistrationStatus` | None |
+| `supports_admin_recovery` | `(env) → bool` | None |
+| `set_rate_limit_config` | `(env, config: RateLimitConfig) → Result<(), RegistrarError>` | None |
+| `get_rate_limit_config` | `(env) → RateLimitConfig` | None |
+| `whitelist_address` | `(env, address: Address) → Result<(), RegistrarError>` | None |
+| `remove_whitelist_address` | `(env, address: Address) → Result<(), RegistrarError>` | None |
+| `is_whitelisted` | `(env, address: Address) → bool` | None |
+| `get_registrations_in_window` | `(env, address: Address, now_unix: u64) → u64` | None |
+
+Types:
+
+```rust
+struct PricingBreakdown { annual_fee_stroops: u64, duration_years: u64, premium_stroops: u64 }
+struct RegistrationQuote { fee_stroops: u64, expiry_unix: u64, grace_period_ends_at: u64, pricing: PricingBreakdown }
+struct RenewalQuote { fee_stroops: u64, current_expiry_unix: u64, extended_expiry_unix: u64, grace_period_ends_at: u64, pricing: PricingBreakdown }
+struct RegistrarMetrics { treasury_balance: u64, total_registrations: u64, total_renewals: u64 }
+struct RegistrationRecord { name: String, owner: Address, registered_at: u64, expires_at: u64, grace_period_ends_at: u64, fee_paid: u64, renewed_at: u64 }
+struct RateLimitConfig { window_size_seconds: u64, max_registrations_per_window: u64 }
+enum RegistrationStatus { Unavailable, Active, GracePeriod }
+event ContractUpgraded { old_version: u32, new_version: u32, admin: Address }
+```
+
+Errors: `RegistrarError` — `InsufficientFee=1`, `NotFound=2`, `NotRenewable=3`,
+`AlreadyRegistered=4`, `Reserved=5`, `Unauthorized=6`, `Validation=7`,
+`RegistrationClaimable=8`, `NotInitialized=9`, `AlreadyInitialized=10`,
+`RateLimitExceeded=11`, `UpgradeFailed=12`
+
+---
+
+### Resolver — Added
+
+**Contract:** `xlm-ns-resolver` · On-chain version: `1`
+
+Functions:
+
+| Function | Signature | Auth |
+|----------|-----------|------|
+| `initialize` | `(env, registry: Address, admin: Address) → Result<(), ResolverError>` | None (once) |
+| `version` | `(env) → u32` | None |
+| `get_version` | `(env) → u32` | None |
+| `upgrade` | `(env, new_wasm_hash: BytesN<32>, migration_data: Bytes) → Result<(), ResolverError>` | admin |
+| `set_record` | `(env, name: String, owner: Address, address: String, now_unix: u64) → Result<(), ResolverError>` | owner (via registry) |
+| `set_address` | `(env, name: String, caller: Address, chain: String, address: String, now_unix: u64) → Result<(), ResolverError>` | caller |
+| `get_address` | `(env, name: String, chain: String) → Option<String>` | None |
+| `set_text_record` | `(env, name: String, caller: Address, key: String, value: String, now_unix: u64) → Result<(), ResolverError>` | caller |
+| `set_primary_name` | `(env, address: String, caller: Address, name: String) → Result<(), ResolverError>` | caller |
+| `remove_record` | `(env, name: String, caller: Address) → Result<(), ResolverError>` | caller |
+| `update_owner` | `(env, name: String, caller: Address, new_owner: Address) → Result<(), ResolverError>` | caller |
+| `transfer_record_owner` | `(env, name: String, caller: Address, new_owner: Address) → Result<(), ResolverError>` | caller |
+| `resolve` | `(env, name: String) → Option<ResolutionRecord>` | None |
+| `get_stellar_address` | `(env, name: String) → Option<String>` | None |
+| `has_record` | `(env, name: String) → bool` | None |
+| `reverse` | `(env, address: String) → Option<String>` | None |
+| `batch_resolve` | `(env, names: Vec<String>) → Vec<Option<ResolutionRecord>>` | None |
+| `batch_reverse` | `(env, addresses: Vec<String>) → Vec<Option<String>>` | None |
+| `batch_set` | `(env, name: String, caller: Address, ops: Vec<BatchOp>, now_unix: u64) → Result<u32, ResolverError>` | caller |
+
+Types:
+
+```rust
+struct ResolutionRecord {
+    owner: Address,
+    addresses: Map<String, String>,  // chain → address
+    text_records: Map<String, String>,
+    updated_at: u64,
+}
+
+enum BatchOp { SetAddress(String), SetText(String, String) }
+
+event ForwardUpdated  { name: String, address: String, chain: String, updated_at: u64 }
+event ReverseUpdated  { address: String, name: String }
+event PrimaryNameSet  { address: String, name: String }
+event TextRecordUpdated { name: String, key: String, value: String, updated_at: u64 }
+event RecordRemoved   { name: String, former_address: Option<String> }
+event ContractUpgraded { old_version: u32, new_version: u32, admin: Address }
+```
+
+Errors: `ResolverError` — `Validation=1`, `RecordNotFound=2`, `Unauthorized=3`,
+`TooManyTextRecords=4`, `NotInitialized=5`, `TextRecordValueTooLong=6`,
+`InvalidChain=7`, `InvalidKey=8`, `BatchTooLarge=9`, `UpgradeFailed=10`
+
+Constants: `MAX_TEXT_RECORDS` (from `xlm_ns_common`), `MAX_TEXT_RECORD_VALUE_LENGTH`
+(from `xlm_ns_common`), `MAX_BATCH_OPS = 16`
+
+---
+
+### Auction — Added
+
+**Contract:** `xlm-ns-auction` · On-chain version: `1`
+
+Functions:
+
+| Function | Signature | Auth |
+|----------|-----------|------|
+| `initialize` | `(env, admin: Address) → Result<(), AuctionError>` | None (once) |
+| `version` | `(env) → u32` | None |
+| `get_version` | `(env) → u32` | None |
+| `upgrade` | `(env, new_wasm_hash: BytesN<32>, migration_data: Bytes) → Result<(), AuctionError>` | admin |
+| `create_auction` | `(env, name: String, asset: Address, treasury: Address, reserve_price: u64, starts_at: u64, ends_at: u64) → Result<(), AuctionError>` | None |
+| `place_bid` | `(env, name: String, bidder: Address, amount: u64, now_unix: u64) → Result<(), AuctionError>` | bidder |
+| `settle` | `(env, name: String, now_unix: u64) → Result<Option<Settlement>, AuctionError>` | None |
+| `auction` | `(env, name: String) → Option<Auction>` | None |
+| `auction_names` | `(env) → Vec<String>` | None |
+| `auction_count` | `(env) → u32` | None |
+| `active_auctions` | `(env, now_unix: u64) → Vec<Auction>` | None |
+| `settled_auctions` | `(env) → Vec<Auction>` | None |
+| `list_auctions` | `(env, offset: u32, limit: u32) → Vec<String>` | None |
+| `list_active_auctions` | `(env, now_unix: u64, offset: u32, limit: u32) → Vec<String>` | None |
+| `list_settled_auctions` | `(env, offset: u32, limit: u32) → Vec<String>` | None |
+
+Types:
+
+```rust
+struct Bid       { bidder: Address, amount: u64, placed_at: u64 }
+struct Settlement { winner: Option<Address>, clearing_price: u64, winning_bid: u64, settled_at: u64, sold: bool }
+struct Auction   { name: String, reserve_price: u64, starts_at: u64, ends_at: u64, bids: Vec<Bid>, asset: Address, treasury: Address }
+```
+
+Errors: `AuctionError` — `Validation=1`, `AlreadyExists=2`, `NotFound=3`,
+`AuctionClosed=4`, `AuctionNotStarted=5`, `AuctionNotEnded=6`, `AlreadySettled=7`,
+`InvalidBid=8`, `UpgradeFailed=9`
+
+Constants: `MAX_AUCTION_RESULTS = 100`, `MAX_PAGE_SIZE = 100`
+
+Settlement algorithm: Vickrey (second-price sealed-bid). Winner pays
+`max(second_highest_bid, reserve_price)`; all other bidders are refunded on
+`settle`.
+
+---
+
+### Subdomain — Added
+
+**Contract:** `xlm-ns-subdomain` · On-chain version: `1`
+
+Functions:
+
+| Function | Signature | Auth |
+|----------|-----------|------|
+| `initialize` | `(env, admin: Address) → Result<(), SubdomainError>` | None (once) |
+| `version` | `(env) → u32` | None |
+| `get_version` | `(env) → u32` | None |
+| `upgrade` | `(env, new_wasm_hash: BytesN<32>, migration_data: Bytes) → Result<(), SubdomainError>` | admin |
+| `register_parent` | `(env, parent: String, owner: Address) → Result<(), SubdomainError>` | None |
+| `add_controller` | `(env, parent: String, caller: Address, controller: Address) → Result<(), SubdomainError>` | caller (parent owner) |
+| `remove_controller` | `(env, parent: String, caller: Address, controller: Address) → Result<(), SubdomainError>` | caller (parent owner) |
+| `create` | `(env, label: String, parent: String, caller: Address, owner: Address, now_unix: u64) → Result<String, SubdomainError>` | caller (owner or controller) |
+| `transfer` | `(env, fqdn: String, caller: Address, new_owner: Address) → Result<(), SubdomainError>` | caller (subdomain owner) |
+| `delete` | `(env, fqdn: String, caller: Address) → Result<(), SubdomainError>` | caller (owner / parent owner / controller) |
+| `revoke` | `(env, fqdn: String, caller: Address) → Result<(), SubdomainError>` | caller (owner / parent owner / controller) |
+| `exists` | `(env, fqdn: String) → bool` | None |
+| `parent` | `(env, parent: String) → Option<ParentDomain>` | None |
+| `record` | `(env, fqdn: String) → Option<SubdomainRecord>` | None |
+| `subdomains_for_parent` | `(env, parent: String) → Vec<String>` | None |
+| `subdomains_for_owner` | `(env, owner: Address) → Vec<String>` | None |
+
+Types:
+
+```rust
+struct ParentDomain  { owner: Address, controllers: Vec<Address> }
+struct SubdomainRecord { parent: String, owner: Address, created_at: u64 }
+event ContractUpgraded { old_version: u32, new_version: u32, admin: Address }
+```
+
+Errors: `SubdomainError` — `Validation=1`, `ParentNotFound=2`, `AlreadyExists=3`,
+`NotFound=4`, `Unauthorized=5`, `UpgradeFailed=6`
+
+---
+
+### NFT — Added
+
+**Contract:** `xlm-ns-nft` · On-chain version: `1`
+
+Functions:
+
+| Function | Signature | Auth |
+|----------|-----------|------|
+| `initialize` | `(env, admin: Address) → Result<(), NftError>` | None (once) |
+| `version` | `(env) → u32` | None |
+| `get_version` | `(env) → u32` | None |
+| `upgrade` | `(env, new_wasm_hash: Bytes, migration_data: Bytes) → Result<(), NftError>` | admin |
+| `mint` | `(env, token_id: String, owner: Address, metadata_uri: Option<String>) → Result<(), NftError>` | None |
+| `approve` | `(env, token_id: String, caller: Address, approved: Address) → Result<(), NftError>` | caller (token owner) |
+| `approve_clear` | `(env, token_id: String, caller: Address) → Result<(), NftError>` | caller (token owner) |
+| `transfer` | `(env, token_id: String, caller: Address, new_owner: Address) → Result<(), NftError>` | caller (owner or approved) |
+| `transfer_from` | `(env, spender: Address, owner: Address, recipient: Address, token_id: String) → Result<(), NftError>` | spender |
+| `owner_of` | `(env, token_id: String) → Option<Address>` | None |
+| `token` | `(env, token_id: String) → Option<TokenRecord>` | None |
+| `balance_of` | `(env, owner: Address) → u32` | None |
+| `total_supply` | `(env) → u32` | None |
+| `token_by_index` | `(env, index: u32) → Option<String>` | None |
+| `token_of_owner_by_index` | `(env, owner: Address, index: u32) → Option<String>` | None |
+| `token_uri` | `(env, token_id: String) → Option<String>` | None |
+
+Types:
+
+```rust
+struct TokenRecord { owner: Address, approved: Option<Address>, metadata_uri: Option<String> }
+event ContractUpgraded { old_version: u32, new_version: u32, admin: Address }
+```
+
+Errors: `NftError` — `AlreadyMinted=1`, `NotFound=2`, `Unauthorized=3`, `UpgradeFailed=4`
+
+---
+
+### Bridge — Added
+
+**Contract:** `xlm-ns-bridge` · On-chain version: `1`
+
+Supported chains: `base`, `ethereum`, `arbitrum`
+
+Functions:
+
+| Function | Signature | Auth |
+|----------|-----------|------|
+| `initialize` | `(env, admin: Address) → Result<(), BridgeError>` | None (once) |
+| `version` | `(env) → u32` | None |
+| `get_version` | `(env) → u32` | None |
+| `upgrade` | `(env, new_wasm_hash: BytesN<32>, migration_data: Bytes) → Result<(), BridgeError>` | admin |
+| `register_chain` | `(env, chain: String) → Result<(), BridgeError>` | None |
+| `build_message` | `(env, name: String, chain: String) → Result<String, BridgeError>` | None |
+| `build_reverse_message` | `(env, address: String, primary_name: String, chain: String) → Result<String, BridgeError>` | None |
+| `route` | `(env, chain: String) → Option<BridgeRoute>` | None |
+
+Types:
+
+```rust
+struct BridgeRoute { destination_chain: String, destination_resolver: String, gateway: String }
+```
+
+Errors: `BridgeError` — `Validation=1`, `UnsupportedChain=2`, `UpgradeFailed=3`
+
+---
+
+### SDK (`xlm-ns-sdk`) — Added
+
+Initial Rust SDK wrapping all seven contract clients. Version `0.1.0`.
+
+- Typed client structs for each contract
+- Synchronous and async invocation helpers over `stellar-rpc-client`
+- Offline FQDN and label validation via `xlm-ns-common`
+
+### CLI (`xlm-ns-cli`) — Added
+
+Initial CLI binary. Version `0.1.0`.
+
+Commands: `resolve`, `register`, `renew`, `transfer`, `set-record`, `reverse`,
+`auction`, `subdomain`, `history`
+
+---
+
+## Migration Guides
+
+See [`docs/migration/`](docs/migration/) for step-by-step guides when upgrading
+across breaking contract versions.
+
+## Version Compatibility
+
+See [`docs/compatibility.md`](docs/compatibility.md) for the SDK / CLI / contract
+version compatibility matrix.
+
+[Unreleased]: https://github.com/Soroban-Ens/xlm-ens/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Soroban-Ens/xlm-ens/releases/tag/v0.1.0

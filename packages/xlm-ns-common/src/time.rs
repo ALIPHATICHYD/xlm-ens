@@ -5,7 +5,11 @@ pub fn expiry_from_now(now_unix: u64, years: u64) -> u64 {
 }
 
 pub fn grace_period_ends_at(expiry_unix: u64) -> u64 {
-    expiry_unix.saturating_add(GRACE_PERIOD_SECONDS)
+    grace_period_ends_at_with_duration(expiry_unix, GRACE_PERIOD_SECONDS)
+}
+
+pub fn grace_period_ends_at_with_duration(expiry_unix: u64, grace_period_seconds: u64) -> u64 {
+    expiry_unix.saturating_add(grace_period_seconds)
 }
 
 pub fn is_active_at(expires_at: u64, now_unix: u64) -> bool {

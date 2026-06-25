@@ -16,8 +16,8 @@ pub use name_validation::{
     validate_name, validate_name_with_reserved, NameValidationError, ValidatedName,
 };
 pub use time::{
-    expiry_from_now, grace_period_ends_at, is_active_at, is_claimable_at, is_time_window_open,
-    within_grace_period,
+    expiry_from_now, grace_period_ends_at, grace_period_ends_at_with_duration, is_active_at,
+    is_claimable_at, is_time_window_open, within_grace_period,
 };
 #[cfg(feature = "soroban")]
 pub use types::RegistryEntry;

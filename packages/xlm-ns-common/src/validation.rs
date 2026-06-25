@@ -3,6 +3,7 @@ use crate::constants::{
 };
 use crate::errors::CommonError;
 use crate::types::Tld;
+use alloc::string::{String, ToString};
 
 pub fn validate_label(label: &str) -> Result<(), CommonError> {
     let len = label.len();

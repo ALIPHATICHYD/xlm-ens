@@ -2,8 +2,8 @@
 mod test;
 
 use soroban_sdk::{
-    contract, contracterror, contractevent, contractimpl, contracttype, symbol_short, Address,
-    Bytes, Env, String, Vec,
+    contract, contractclient, contracterror, contractevent, contractimpl, contracttype,
+    symbol_short, Address, Bytes, Env, String, Vec,
 };
 use xlm_ns_common::soroban::validate_fqdn_soroban;
 use xlm_ns_common::time::{is_active_at, is_claimable_at};
@@ -99,6 +99,11 @@ pub trait Nft {
     fn sync_owner(env: Env, name: String, new_owner: Address);
     fn sync_expiry(env: Env, name: String, new_expiry: u64);
     fn burn(env: Env, name: String);
+}
+
+#[contractclient(name = "ResolverClient")]
+pub trait Resolver {
+    fn clear_reverse_record(env: Env, name: String, previous_owner: Address);
 }
 
 #[contractimpl]
@@ -297,6 +302,13 @@ impl RegistryContract {
         put_entry(&env, &name, &entry);
         remove_owner_name(&env, &old_owner, &name);
         add_owner_name(&env, &new_owner, &name);
+
+        if let Some(resolver_id) = entry.resolver.clone() {
+            let resolver_address = Address::from_string(&resolver_id);
+            let resolver_client = ResolverClient::new(&env, &resolver_address);
+            resolver_client.clear_reverse_record(&name, &old_owner);
+        }
+
         env.events().publish(
             (symbol_short!("name"), symbol_short!("transfer")),
             (name.clone(), old_owner, new_owner.clone()),
@@ -319,6 +331,9 @@ impl RegistryContract {
         caller.require_auth();
         let mut entry = get_entry(&env, &name)?;
         ensure_owner(&entry, &caller, now_unix)?;
+        if let Some(resolver_id) = &resolver {
+            Address::from_string(resolver_id);
+        }
         entry.resolver = resolver;
         put_entry(&env, &name, &entry);
         Ok(())
@@ -355,11 +370,7 @@ impl RegistryContract {
         Ok(())
     }
 
-    pub fn update_owner(
-        env: Env,
-        name: String,
-        new_owner: Address,
-    ) -> Result<(), RegistryError> {
+    pub fn update_owner(env: Env, name: String, new_owner: Address) -> Result<(), RegistryError> {
         // Only the NFT contract can call this function
         let nft_contract: Address = env
             .storage()

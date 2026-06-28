@@ -362,7 +362,7 @@ mod tests {
             &time.future(2_000),
         );
 
-        let resolver = Some(String::from_str(&env, "resolver_address"));
+        let resolver = Some(Address::generate(&env).to_string());
         let result = client.try_set_resolver(&name, &attacker, &resolver, &time.future(10));
         assert!(matches!(result, Err(Ok(RegistryError::Unauthorized))));
     }

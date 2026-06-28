@@ -3,7 +3,7 @@ mod test;
 
 use soroban_sdk::{
     contract, contracterror, contractevent, contractimpl, contracttype, symbol_short, Address,
-    Bytes, Env, IntoVal, Map, String, Symbol, Vec,
+    Bytes, Env, Error, IntoVal, Map, String, Symbol, Vec,
 };
 use xlm_ns_common::soroban::validate_fqdn_soroban;
 use xlm_ns_common::RegistryEntry;
@@ -211,7 +211,8 @@ impl ResolverContract {
             },
         );
 
-        env.deployer().update_current_contract_wasm(new_wasm_hash.to_bytes());
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.to_bytes());
 
         Ok(())
     }
@@ -454,6 +455,34 @@ impl ResolverContract {
         Ok(())
     }
 
+    /// Synchronize reverse resolution after a registry transfer.
+    ///
+    /// This is called by the registry immediately after ownership changes so
+    /// stale reverse and primary mappings for the previous owner do not linger.
+    pub fn clear_reverse_record(env: Env, name: String, previous_owner: Address) {
+        let registry = get_registry(&env).expect("resolver not initialized");
+        assert_eq!(
+            env.caller(),
+            registry,
+            "only the registry may sync reverse state"
+        );
+
+        let previous_owner_key = previous_owner.to_string();
+        let reverse_key = DataKey::Reverse(previous_owner_key.clone());
+        if let Some(current_name) = env.storage().persistent().get::<_, String>(&reverse_key) {
+            if current_name == name {
+                env.storage().persistent().remove(&reverse_key);
+            }
+        }
+
+        let primary_key = DataKey::Primary(previous_owner_key);
+        if let Some(current_name) = env.storage().persistent().get::<_, String>(&primary_key) {
+            if current_name == name {
+                env.storage().persistent().remove(&primary_key);
+            }
+        }
+    }
+
     pub fn update_owner(
         env: Env,
         name: String,
@@ -487,10 +516,29 @@ impl ResolverContract {
     }
 
     pub fn reverse(env: Env, address: String) -> Option<String> {
-        env.storage()
+        if let Some(name) = env
+            .storage()
             .persistent()
-            .get(&DataKey::Primary(address.clone()))
-            .or_else(|| env.storage().persistent().get(&DataKey::Reverse(address)))
+            .get::<_, String>(&DataKey::Primary(address.clone()))
+        {
+            if reverse_lookup_matches_current_owner(&env, &name, &address) {
+                return Some(name);
+            }
+            cleanup_stale_reverse(&env, &address, &name);
+        }
+
+        if let Some(name) = env
+            .storage()
+            .persistent()
+            .get::<_, String>(&DataKey::Reverse(address.clone()))
+        {
+            if reverse_lookup_matches_current_owner(&env, &name, &address) {
+                return Some(name);
+            }
+            cleanup_stale_reverse(&env, &address, &name);
+        }
+
+        None
     }
 
     pub fn transfer_record_owner(
@@ -525,16 +573,7 @@ impl ResolverContract {
     pub fn batch_reverse(env: Env, addresses: Vec<String>) -> Vec<Option<String>> {
         let mut out = Vec::new(&env);
         for address in addresses.iter() {
-            out.push_back(
-                env.storage()
-                    .persistent()
-                    .get(&DataKey::Primary(address.clone()))
-                    .or_else(|| {
-                        env.storage()
-                            .persistent()
-                            .get(&DataKey::Reverse(address.clone()))
-                    }),
-            );
+            out.push_back(Self::reverse(env.clone(), address.clone()));
         }
         out
     }
@@ -693,6 +732,48 @@ fn get_record(env: &Env, name: &String) -> Result<ResolutionRecord, ResolverErro
         .persistent()
         .get(&DataKey::Forward(name.clone()))
         .ok_or(ResolverError::RecordNotFound)
+}
+
+fn cleanup_stale_reverse(env: &Env, address: &String, name: &String) {
+    let reverse_key = DataKey::Reverse(address.clone());
+    if let Some(current_name) = env.storage().persistent().get::<_, String>(&reverse_key) {
+        if current_name == *name {
+            env.storage().persistent().remove(&reverse_key);
+        }
+    }
+
+    let primary_key = DataKey::Primary(address.clone());
+    if let Some(current_name) = env.storage().persistent().get::<_, String>(&primary_key) {
+        if current_name == *name {
+            env.storage().persistent().remove(&primary_key);
+        }
+    }
+}
+
+fn reverse_lookup_matches_current_owner(env: &Env, name: &String, address: &String) -> bool {
+    let current_owner = if let Some(registry) = env
+        .storage()
+        .instance()
+        .get::<_, Address>(&DataKey::Registry)
+    {
+        let now_unix = env.ledger().timestamp();
+        match env.try_invoke_contract::<RegistryEntry, Error>(
+            &registry,
+            &Symbol::new(env, "resolve"),
+            (name.clone(), now_unix).into_val(env),
+        ) {
+            Ok(Ok(entry)) => Some(entry.owner.to_string()),
+            _ => None,
+        }
+    } else {
+        get_record(env, name)
+            .ok()
+            .map(|record| record.owner.to_string())
+    };
+
+    current_owner
+        .map(|owner| owner == *address)
+        .unwrap_or(false)
 }
 
 /// Write a record and unconditionally extend its TTL (#146).

@@ -8,6 +8,7 @@ mod tests {
     use xlm_ns_common::{MAX_TEXT_RECORDS, MAX_TEXT_RECORD_VALUE_LENGTH};
 
     use crate::{BatchOp, ResolverContract, ResolverContractClient};
+    use xlm_ns_registry::{RegistryContract, RegistryContractClient};
 
     #[test]
     fn persists_forward_reverse_and_primary_resolution_records() {
@@ -61,6 +62,94 @@ mod tests {
 
         assert_eq!(client.resolve(&name), None);
         assert_eq!(client.reverse(&address), None);
+    }
+
+    #[test]
+    fn transfer_clears_old_owner_reverse_and_does_not_set_new_owner_reverse() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let registry_id = env.register(RegistryContract, ());
+        let resolver_id = env.register(ResolverContract, ());
+
+        let registry = RegistryContractClient::new(&env, &registry_id);
+        let resolver = ResolverContractClient::new(&env, &resolver_id);
+
+        let admin = Address::generate(&env);
+        registry.initialize(&admin);
+        resolver.initialize(&registry_id, &admin);
+
+        let old_owner = Address::generate(&env);
+        let new_owner = Address::generate(&env);
+        let name = String::from_str(&env, "alice.xlm");
+        let old_address = String::from_str(&env, "GAAAA");
+        let new_address = String::from_str(&env, "GBBBB");
+        let now = 100u64;
+
+        registry.register(
+            &name,
+            &old_owner,
+            &Some(resolver_id.to_string()),
+            &None::<String>,
+            &now,
+            &1_000,
+            &2_000,
+        );
+
+        resolver.set_record(&name, &old_owner, &old_address, &now);
+        resolver.set_primary_name(&old_address, &old_owner, &name);
+
+        registry.transfer(&name, &old_owner, &new_owner, &now + 10);
+
+        assert_eq!(resolver.reverse(&old_address), None);
+        assert_eq!(resolver.reverse(&new_address), None);
+    }
+
+    #[test]
+    fn reverse_lookup_lazily_cleans_stale_entries_after_registry_transfer() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let registry_id = env.register(RegistryContract, ());
+        let resolver_id = env.register(ResolverContract, ());
+
+        let registry = RegistryContractClient::new(&env, &registry_id);
+        let resolver = ResolverContractClient::new(&env, &resolver_id);
+
+        let admin = Address::generate(&env);
+        registry.initialize(&admin);
+        resolver.initialize(&registry_id, &admin);
+
+        let old_owner = Address::generate(&env);
+        let new_owner = Address::generate(&env);
+        let name = String::from_str(&env, "bob.xlm");
+        let old_address = String::from_str(&env, "GCCCC");
+        let now = 200u64;
+
+        registry.register(
+            &name,
+            &old_owner,
+            &Some(resolver_id.to_string()),
+            &None::<String>,
+            &now,
+            &1_200,
+            &2_200,
+        );
+
+        resolver.set_record(&name, &old_owner, &old_address, &now);
+        registry.transfer(&name, &old_owner, &new_owner, &now + 10);
+
+        env.as_contract(&resolver_id, || {
+            env.storage()
+                .persistent()
+                .set(&crate::DataKey::Reverse(old_address.clone()), &name);
+            env.storage()
+                .persistent()
+                .set(&crate::DataKey::Primary(old_address.clone()), &name);
+        });
+
+        assert_eq!(resolver.reverse(&old_address), None);
+        assert_eq!(resolver.reverse(&old_address), None);
     }
 
     #[test]

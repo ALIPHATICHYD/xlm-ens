@@ -1,51 +1,30 @@
 [package]
-name = "xlm-ns-integration-tests"
-edition.workspace = true
-license.workspace = true
-version.workspace = true
+name = "xlm-ns-common-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
 
-[dev-dependencies]
-soroban-sdk = { version = "=26.0.0-rc.1", features = ["testutils"] }
-tempfile = "3.8"
-xlm-ns-registrar = { path = "../contracts/registrar" }
-xlm-ns-registry  = { path = "../contracts/registry" }
-xlm-ns-resolver  = { path = "../contracts/resolver" }
-xlm-ns-subdomain = { path = "../contracts/subdomain" }
-xlm-ns-auction   = { path = "../contracts/auction" }
-xlm-ns-bridge    = { path = "../contracts/bridge" }
+[package.metadata]
+cargo-fuzz = true
 
-[[test]]
-name = "registrar_registry_test"
-path = "integration/registrar_registry_test.rs"
+[dependencies]
+libfuzzer-sys = "0.4"
 
-[[test]]
-name = "registrar_test"
-path = "integration/registrar_test.rs"
+[dependencies.xlm-ns-common]
+path = ".."
 
-[[test]]
-name = "registry_test"
-path = "integration/registry_test.rs"
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
 
-[[test]]
-name = "subdomain_test"
-path = "integration/subdomain_test.rs"
+[[bin]]
+name = "fuzz_validate_label"
+path = "fuzz_targets/fuzz_validate_label.rs"
+test = false
+doc = false
 
-[[test]]
-name = "auction_test"
-path = "integration/auction_test.rs"
-
-[[test]]
-name = "bridge_test"
-path = "integration/bridge_test.rs"
-
-[[test]]
-name = "bulk_test"
-path = "integration/bulk_test.rs"
-
-# Storage / hot-path benchmarks. Marked `#[ignore]` in source so they do not
-# run in default `cargo test`; invoke with:
-#   cargo test --test storage_benchmarks -- --ignored --nocapture
-# or `scripts/run-benchmarks.sh`.
-[[test]]
-name = "storage_benchmarks"
-path = "benches/storage_benchmarks.rs"
+[[bin]]
+name = "fuzz_parse_fqdn"
+path = "fuzz_targets/fuzz_parse_fqdn.rs"
+test = false
+doc = false

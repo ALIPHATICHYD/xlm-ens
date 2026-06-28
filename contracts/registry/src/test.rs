@@ -681,4 +681,207 @@ mod tests {
             "second transfer event should carry (name, old_owner, new_owner)"
         );
     }
+
+    #[test]
+    fn dispute_lock_blocks_mutations_but_not_resolution_and_expires_automatically() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(RegistryContract, ());
+        let client = RegistryContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let dispute_admin = Address::generate(&env);
+        let owner = Address::generate(&env);
+        let next_owner = Address::generate(&env);
+        let name = String::from_str(&env, "locked.xlm");
+        let time = TimeHelper::new();
+        let expires_at = time.future(1_000);
+        let grace_ends_at = time.future(2_000);
+
+        client.initialize(&admin);
+        client.set_dispute_admin(&dispute_admin);
+        client.register(
+            &name,
+            &owner,
+            &None::<String>,
+            &None::<String>,
+            &time.now,
+            &expires_at,
+            &grace_ends_at,
+        );
+
+        let lock_reason = String::from_str(&env, "dispute review");
+        let locked_until = time.future(50);
+        client.lock_name(
+            &name,
+            &dispute_admin,
+            &locked_until,
+            &lock_reason,
+            &time.now,
+        );
+
+        let resolved = client.resolve(&name, &time.future(10));
+        assert_eq!(
+            resolved.owner, owner,
+            "resolution should stay live while locked"
+        );
+
+        assert!(matches!(
+            client.try_transfer(&name, &owner, &next_owner, &time.future(10)),
+            Err(Ok(RegistryError::Locked))
+        ));
+        assert!(matches!(
+            client.try_set_metadata(
+                &name,
+                &owner,
+                &Some(String::from_str(&env, "ipfs://new-metadata")),
+                &time.future(10)
+            ),
+            Err(Ok(RegistryError::Locked))
+        ));
+        assert!(matches!(
+            client.try_renew(
+                &name,
+                &owner,
+                &time.future(1_500),
+                &time.future(2_500),
+                &time.future(10)
+            ),
+            Err(Ok(RegistryError::Locked))
+        ));
+
+        client.transfer(&name, &owner, &next_owner, &time.future(60));
+        let resolved_after_expiry = client.resolve(&name, &time.future(60));
+        assert_eq!(resolved_after_expiry.owner, next_owner);
+    }
+
+    #[test]
+    fn dispute_lock_unlock_emits_events_and_allows_early_release() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(RegistryContract, ());
+        let client = RegistryContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let dispute_admin = Address::generate(&env);
+        let owner = Address::generate(&env);
+        let next_owner = Address::generate(&env);
+        let name = String::from_str(&env, "unlock.xlm");
+        let time = TimeHelper::new();
+        let expires_at = time.future(1_000);
+        let grace_ends_at = time.future(2_000);
+
+        client.initialize(&admin);
+        client.set_dispute_admin(&dispute_admin);
+        client.register(
+            &name,
+            &owner,
+            &None::<String>,
+            &None::<String>,
+            &time.now,
+            &expires_at,
+            &grace_ends_at,
+        );
+
+        let lock_reason = String::from_str(&env, "ownership dispute");
+        let locked_until = time.future(500);
+
+        use soroban_sdk::IntoVal;
+
+        client.lock_name(
+            &name,
+            &dispute_admin,
+            &locked_until,
+            &lock_reason,
+            &time.now,
+        );
+        assert_eq!(
+            env.events().all(),
+            soroban_sdk::vec![
+                &env,
+                (
+                    contract_id.clone(),
+                    (
+                        soroban_sdk::symbol_short!("name"),
+                        soroban_sdk::symbol_short!("lock_applied"),
+                    )
+                        .into_val(&env),
+                    crate::LockApplied {
+                        name: name.clone(),
+                        locked_until,
+                        lock_reason: lock_reason.clone(),
+                        admin: dispute_admin.clone(),
+                    }
+                    .into_val(&env),
+                ),
+            ]
+        );
+
+        client.unlock_name(&name, &dispute_admin);
+        assert_eq!(
+            env.events().all(),
+            soroban_sdk::vec![
+                &env,
+                (
+                    contract_id.clone(),
+                    (
+                        soroban_sdk::symbol_short!("name"),
+                        soroban_sdk::symbol_short!("lock_removed"),
+                    )
+                        .into_val(&env),
+                    crate::LockRemoved {
+                        name: name.clone(),
+                        locked_until,
+                        lock_reason: lock_reason.clone(),
+                        admin: dispute_admin.clone(),
+                    }
+                    .into_val(&env),
+                ),
+            ]
+        );
+
+        client.transfer(&name, &owner, &next_owner, &time.future(10));
+        let resolved = client.resolve(&name, &time.future(10));
+        assert_eq!(resolved.owner, next_owner);
+    }
+
+    #[test]
+    fn non_dispute_admin_cannot_lock_or_unlock_names() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(RegistryContract, ());
+        let client = RegistryContractClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let dispute_admin = Address::generate(&env);
+        let attacker = Address::generate(&env);
+        let owner = Address::generate(&env);
+        let name = String::from_str(&env, "governed.xlm");
+        let time = TimeHelper::new();
+        let expires_at = time.future(1_000);
+        let grace_ends_at = time.future(2_000);
+
+        client.initialize(&admin);
+        client.set_dispute_admin(&dispute_admin);
+        client.register(
+            &name,
+            &owner,
+            &None::<String>,
+            &None::<String>,
+            &time.now,
+            &expires_at,
+            &grace_ends_at,
+        );
+
+        let reason = String::from_str(&env, "dispute");
+        let lock_attempt =
+            client.try_lock_name(&name, &attacker, &time.future(10), &reason, &time.now);
+        assert!(matches!(lock_attempt, Err(Ok(RegistryError::Unauthorized))));
+
+        let unlock_attempt = client.try_unlock_name(&name, &attacker);
+        assert!(matches!(
+            unlock_attempt,
+            Err(Ok(RegistryError::Unauthorized))
+        ));
+    }
 }

@@ -11,6 +11,7 @@ pub enum RegistryError {
     MetadataTooLong,
     InvalidExpiry,
     InvalidGracePeriod,
+    Locked,
     Validation(CommonError),
 }
 
@@ -29,6 +30,7 @@ impl fmt::Display for RegistryError {
             Self::InvalidGracePeriod => {
                 f.write_str("grace_period_ends_at must be greater than or equal to expires_at")
             }
+            Self::Locked => f.write_str("name is locked for dispute resolution"),
             Self::Validation(error) => write!(f, "{error}"),
         }
     }

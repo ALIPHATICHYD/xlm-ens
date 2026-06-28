@@ -23,6 +23,10 @@ pub async fn run_resolve(config: NetworkConfig, name: &str) -> anyhow::Result<()
         if let Some(resolver) = result.resolver {
             println!("Resolver: {}", resolver);
         }
+        println!(
+            "Resolved via wildcard: {}",
+            if result.is_wildcard { "yes" } else { "no" }
+        );
         if let Some(expiry) = result.expires_at {
             println!("Expires at: {}", expiry);
         }

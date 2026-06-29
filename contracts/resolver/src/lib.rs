@@ -245,7 +245,8 @@ impl ResolverContract {
         address: String,
         now_unix: u64,
     ) -> Result<(), ResolverError> {
-        validate_fqdn_soroban(&name).map_err(|_| ResolverError::Validation)?;
+        owner.require_auth();
+        validate_fqdn_soroban(&name).map_err(|_| ResolverError::Validation)?; 
         let registry_backed_owner = registry_owner(&env, &name, now_unix)?;
         let canonical_owner = match registry_backed_owner.clone() {
             Some(registry_owner) => {
@@ -336,6 +337,7 @@ impl ResolverContract {
         address: String,
         now_unix: u64,
     ) -> Result<(), ResolverError> {
+        caller.require_auth();
         let mut record = get_record(&env, &name)?;
         assert_owner(&env, &name, &record, &caller, now_unix)?;
 
@@ -392,6 +394,7 @@ impl ResolverContract {
         value: String,
         now_unix: u64,
     ) -> Result<(), ResolverError> {
+        caller.require_auth();
         // Issue #314: Validate text-record key normalization.
         validate_text_record_key(&key).map_err(|_| ResolverError::InvalidKey)?;
 
@@ -426,6 +429,7 @@ impl ResolverContract {
         caller: Address,
         name: String,
     ) -> Result<(), ResolverError> {
+        caller.require_auth();
         let record = get_record(&env, &name)?;
         assert_owner(&env, &name, &record, &caller, 0)?;
         if let Some(stellar_addr) = record.addresses.get(String::from_str(&env, DEFAULT_CHAIN)) {
@@ -450,6 +454,7 @@ impl ResolverContract {
     }
 
     pub fn remove_record(env: Env, name: String, caller: Address) -> Result<(), ResolverError> {
+        caller.require_auth();
         let record = get_record(&env, &name)?;
         assert_owner(&env, &name, &record, &caller, 0)?;
 
@@ -514,6 +519,7 @@ impl ResolverContract {
         caller: Address,
         new_owner: Address,
     ) -> Result<(), ResolverError> {
+        caller.require_auth();
         let record = get_record(&env, &name)?;
         assert_owner(&env, &name, &record, &caller, 0)?;
         let mut record = record;
@@ -575,6 +581,7 @@ impl ResolverContract {
         caller: Address,
         new_owner: Address,
     ) -> Result<(), ResolverError> {
+        caller.require_auth();
         let mut record = get_record(&env, &name)?;
         if record.owner != caller {
             return Err(ResolverError::Unauthorized);
@@ -634,6 +641,7 @@ impl ResolverContract {
         now_unix: u64,
     ) -> Result<u32, ResolverError> {
         validate_fqdn_soroban(&name).map_err(|_| ResolverError::Validation)?;
+        caller.require_auth();
 
         if ops.len() as usize > MAX_BATCH_OPS {
             return Err(ResolverError::BatchTooLarge);

@@ -133,6 +133,12 @@ impl BridgeContract {
     }
 
     pub fn register_chain(env: Env, chain: String) -> Result<(), BridgeError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(BridgeError::Validation)?;
+        admin.require_auth();
         validate_chain_name_soroban(&chain).map_err(|_| BridgeError::Validation)?;
 
         let supported = env

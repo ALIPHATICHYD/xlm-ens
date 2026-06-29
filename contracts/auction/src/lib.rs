@@ -163,6 +163,12 @@ impl AuctionContract {
         starts_at: u64,
         ends_at: u64,
     ) -> Result<(), AuctionError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(AuctionError::Unauthorized)?;
+        admin.require_auth();
         validate_fqdn_soroban(&name).map_err(|_| AuctionError::Validation)?;
         let key = DataKey::Auction(name.clone());
         if env.storage().persistent().has(&key) {

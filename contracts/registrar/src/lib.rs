@@ -228,6 +228,12 @@ impl RegistrarContract {
     // expiry-plus-grace lifecycle. This contract does not expose an admin
     // recovery or forced-release override.
     pub fn reserve_label(env: Env, label: String) -> Result<(), RegistrarError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(RegistrarError::NotInitialized)?;
+        admin.require_auth();
         validate_label_soroban(&label).map_err(|_| RegistrarError::Validation)?;
         let key = DataKey::Reserved(label.clone());
         if env
@@ -247,6 +253,12 @@ impl RegistrarContract {
     }
 
     pub fn load_reserved_manifest(env: Env, labels: Vec<String>) -> Result<u32, RegistrarError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(RegistrarError::NotInitialized)?;
+        admin.require_auth();
         let mut added_count = 0;
         for label in labels.iter() {
             if validate_label_soroban(&label).is_ok() {
@@ -655,6 +667,12 @@ impl RegistrarContract {
         window_size_seconds: u64,
         max_registrations_per_window: u64,
     ) -> Result<(), RegistrarError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(RegistrarError::NotInitialized)?;
+        admin.require_auth();
         let config = RateLimitConfig {
             window_size_seconds,
             max_registrations_per_window,
@@ -820,6 +838,12 @@ impl RegistrarContract {
 
     /// Governance function: Whitelist an address to bypass rate limiting
     pub fn whitelist_address(env: Env, address: Address) -> Result<(), RegistrarError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(RegistrarError::NotInitialized)?;
+        admin.require_auth();
         env.storage()
             .persistent()
             .set(&DataKey::WhitelistedAddress(address.clone()), &true);
@@ -834,6 +858,12 @@ impl RegistrarContract {
 
     /// Governance function: Remove address from whitelist
     pub fn remove_whitelist_address(env: Env, address: Address) -> Result<(), RegistrarError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(RegistrarError::NotInitialized)?;
+        admin.require_auth();
         let key = DataKey::WhitelistedAddress(address.clone());
         env.storage().persistent().remove(&key);
 

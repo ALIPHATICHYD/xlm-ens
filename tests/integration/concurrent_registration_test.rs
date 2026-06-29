@@ -1,6 +1,7 @@
 use soroban_sdk::{testutils::Address as _, Address, Env, String};
 use xlm_ns_auction::{AuctionContract, AuctionContractClient};
-use xlm_ns_registrar::{RegistrarContract, RegistrarContractClient};
+use xlm_ns_registrar::{RegistrarContract, RegistrarContractClient, pricing};
+use xlm_ns_registrar::RegistrarError;
 use xlm_ns_registry::{RegistryContract, RegistryContractClient};
 use soroban_sdk::token::{StellarAssetClient, Client};
 
@@ -171,4 +172,41 @@ fn test_registration_racing_against_auction_settlement() {
 
     // The auction loser also gets their bid back.
     assert_eq!(token_client.balance(&auction_loser), 1000, "Auction loser should be fully refunded");
+}
+
+#[test]
+fn test_registration_fails_if_price_exceeds_max_price() {
+    let (env, registrar, _) = setup_registrar_registry();
+    let owner = Address::generate(&env);
+    let label = String::from_str(&env, "carol");
+    let time = TimeHelper::new(1_000_000);
+
+    // 1. Get a quote for a 5-char name.
+    let quote = registrar.quote_registration(&label, &1, &time.now);
+    let original_fee = quote.fee_stroops;
+    assert_eq!(original_fee, pricing::price_for_label_length(5));
+
+    // 2. The user agrees to this price and sets it as `max_price`.
+    let max_price = original_fee;
+
+    // 3. Before the user submits, a new pricing policy is enacted that makes 5-char names more expensive.
+    // We can simulate this by attempting to register a name with a different length
+    // that has a higher price, while still using the `max_price` from the original quote.
+    let expensive_label = String::from_str(&env, "bob"); // 3-char name
+    let new_quote = registrar.quote_registration(&expensive_label, &1, &time.now);
+    let new_fee = new_quote.fee_stroops;
+    assert_eq!(new_fee, pricing::price_for_label_length(3));
+    assert!(new_fee > original_fee, "New fee should be higher for a shorter name");
+
+    // 4. User attempts to register the *new*, more expensive name, but with the *old* `max_price`.
+    // This simulates the original name's price increasing.
+    let result = registrar.try_register(&expensive_label, &owner, &1, &max_price, &time.now);
+
+    // 5. The registration should fail because the current price (new_fee) exceeds max_price.
+    assert!(result.is_err(), "Registration should fail due to price exceeding max_price");
+    assert_eq!(result.err(), Some(Ok(RegistrarError::InsufficientFee)));
+
+    // 6. Now, if the user re-quotes and uses the new, higher fee as max_price, it should succeed.
+    let result_success = registrar.try_register(&expensive_label, &owner, &1, &new_fee, &time.now);
+    assert!(result_success.is_ok(), "Registration should succeed with updated max_price");
 }

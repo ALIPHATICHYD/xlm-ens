@@ -1,5 +1,5 @@
 use crate::config::NetworkConfig;
-use crate::output::{emit, OutputFormat};
+use crate::output::{emit, emit_error, with_spinner, OutputFormat};
 use serde_json::json;
 use xlm_ns_sdk::client::XlmNsClient;
 
@@ -23,7 +23,13 @@ pub async fn run_whois(
             .unwrap_or_else(|| "unknown".to_string()),
     );
 
-    match client.get_registration(name).await {
+    match with_spinner(
+        format!("Fetching registration details for {name}"),
+        output,
+        client.get_registration(name),
+    )
+    .await
+    {
         Ok(Some(record)) => {
             let owner = record
                 .address

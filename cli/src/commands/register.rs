@@ -1,5 +1,5 @@
 use crate::config::NetworkConfig;
-use crate::output::{emit, OutputFormat};
+use crate::output::{emit, with_spinner, OutputFormat};
 use crate::signer::SignerProfile;
 use anyhow::Context;
 use serde_json::json;
@@ -29,23 +29,29 @@ pub async fn run_register(
     .with_registrar(registrar_id.clone());
 
     let duration_years = 1;
-    let quote = client
-        .quote_registration(label, duration_years)
-        .await
-        .context("Failed to fetch registration quote")?;
+    let quote = with_spinner(
+        format!("Fetching registration quote for {label}.xlm"),
+        output,
+        client.quote_registration(label, duration_years),
+    )
+    .await
+    .context("Failed to fetch registration quote")?;
 
     let signer_name = signer.as_ref().map(|s| s.name.clone());
     let signer_description = signer.as_ref().map(|s| s.describe());
 
-    let receipt = client
-        .register(RegistrationRequest {
+    let receipt = with_spinner(
+        format!("Submitting registration for {label}.xlm"),
+        output,
+        client.register(RegistrationRequest {
             label: label.into(),
             owner: owner.into(),
             duration_years,
             signer: signer_name.clone(),
-        })
-        .await
-        .context("Failed to submit registration")?;
+        }),
+    )
+    .await
+    .context("Failed to submit registration")?;
 
     let human = {
         let mut lines = vec![

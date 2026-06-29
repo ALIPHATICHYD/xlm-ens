@@ -1,5 +1,5 @@
 use crate::config::NetworkConfig;
-use crate::output::{emit, OutputFormat};
+use crate::output::{emit, emit_error, with_spinner, OutputFormat};
 use serde_json::json;
 use xlm_ns_sdk::client::XlmNsClient;
 
@@ -27,7 +27,13 @@ pub async fn run_quote(
     )
     .with_registrar(registrar_contract_id.clone());
 
-    match client.quote_registration(label, duration_years).await {
+    match with_spinner(
+        format!("Fetching quote for {label}.xlm"),
+        output,
+        client.quote_registration(label, duration_years),
+    )
+    .await
+    {
         Ok(quote) => {
             let human = format!(
                 "Quote for {label}.xlm ({duration_years} year(s)):\n\
@@ -138,7 +144,13 @@ pub async fn run_availability(
         config.auction_contract_id.clone(),
     );
 
-    match client.get_registration(name).await {
+    match with_spinner(
+        format!("Checking availability for {name}"),
+        output,
+        client.get_registration(name),
+    )
+    .await
+    {
         Ok(Some(record)) => {
             // Name has an existing registration record.
             let expires_at = record.expires_at;

@@ -1,4 +1,5 @@
 use crate::config::NetworkConfig;
+use crate::output::print_human;
 use chrono::{DateTime, Duration, Utc};
 use clap::Subcommand;
 use colored::*;
@@ -97,9 +98,9 @@ pub async fn run(config: NetworkConfig, command: WatchCommand) -> anyhow::Result
             if !watchlist.names.contains(&name) {
                 watchlist.names.push(name.clone());
                 save_watchlist(&watchlist)?;
-                println!("Added '{}' to the watchlist.", name);
+                print_human(&format!("Added '{}' to the watchlist.", name));
             } else {
-                println!("'{}' is already in the watchlist.", name);
+                print_human(&format!("'{}' is already in the watchlist.", name));
             }
         }
         WatchCommand::Remove { name } => {
@@ -107,19 +108,19 @@ pub async fn run(config: NetworkConfig, command: WatchCommand) -> anyhow::Result
             if let Some(pos) = watchlist.names.iter().position(|n| n == &name) {
                 watchlist.names.remove(pos);
                 save_watchlist(&watchlist)?;
-                println!("Removed '{}' from the watchlist.", name);
+                print_human(&format!("Removed '{}' from the watchlist.", name));
             } else {
-                println!("'{}' is not in the watchlist.", name);
+                print_human(&format!("'{}' is not in the watchlist.", name));
             }
         }
         WatchCommand::List => {
             let watchlist = load_watchlist()?;
             if watchlist.names.is_empty() {
-                println!("The watchlist is empty.");
+                print_human("The watchlist is empty.");
             } else {
-                println!("Watched names:");
+                print_human("Watched names:");
                 for name in watchlist.names {
-                    println!("- {}", name);
+                    print_human(&format!("- {}", name));
                 }
             }
         }
@@ -127,7 +128,7 @@ pub async fn run(config: NetworkConfig, command: WatchCommand) -> anyhow::Result
             let watchlist = load_watchlist()?;
             if watchlist.names.is_empty() {
                 if !cron {
-                    println!("The watchlist is empty.");
+                    print_human("The watchlist is empty.");
                 }
                 return Ok(());
             }

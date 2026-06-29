@@ -1,5 +1,5 @@
-use crate::config::{config_template, load_config, Network, ResolveOptions};
-use crate::output::{emit, OutputFormat};
+use crate::config::{Network, ResolveOptions, config_template, load_config};
+use crate::output::{emit, print_human, OutputFormat};
 use serde_json::json;
 use std::env;
 use std::fs;
@@ -57,7 +57,7 @@ pub async fn run_init(path: Option<PathBuf>, network: Network, force: bool) -> a
     let path = resolve_path(path);
     write_template(&path, network, force)?;
 
-    println!("Wrote config template to {}", path.display());
+    print_human(&format!("Wrote config template to {}", path.display()));
     Ok(())
 }
 
@@ -89,41 +89,41 @@ pub async fn run_validate(
     let mut failures = 0;
 
     if output == OutputFormat::Human {
-        println!("Validating configuration for {}...", network.as_str());
+        print_human(&format!("Validating configuration for {}...", network.as_str()));
         for result in &validation.contract_id_format {
             if result.status == crate::commands::validate::ValidationStatus::Fail {
                 failures += 1;
             }
-            println!("[{}] {}", result.status, result.name);
+            print_human(&format!("[{}] {}", result.status, result.name));
         }
         if validation.rpc_connectivity.status == crate::commands::validate::ValidationStatus::Fail {
             failures += 1;
         }
-        println!(
+        print_human(&format!(
             "[{}] {}",
             validation.rpc_connectivity.status, validation.rpc_connectivity.name
-        );
+        ));
         if validation.network_passphrase.status == crate::commands::validate::ValidationStatus::Fail
         {
             failures += 1;
         }
-        println!(
+        print_human(&format!(
             "[{}] {}",
             validation.network_passphrase.status, validation.network_passphrase.name
-        );
+        ));
         if validation.signing_key.status == crate::commands::validate::ValidationStatus::Fail {
             failures += 1;
         }
-        println!(
+        print_human(&format!(
             "[{}] {}",
             validation.signing_key.status, validation.signing_key.name
-        );
+        ));
 
         if failures > 0 {
-            println!("\nValidation failed with {failures} errors.");
+            print_human(&format!("\nValidation failed with {failures} errors."));
             std::process::exit(1);
         } else {
-            println!("\nConfiguration is valid.");
+            print_human("\nConfiguration is valid.");
         }
     } else {
         let mut results = validation.contract_id_format;

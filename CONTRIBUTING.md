@@ -66,3 +66,16 @@ To automatically validate your commit messages, you can use a pre-commit hook.
           - cli
           - common
     ```
+
+## Snapshot Updates
+
+If a test intentionally changes snapshot output, regenerate the snapshots,
+review the diff, and commit the updated files together with the code change:
+
+```sh
+UPDATE_SNAPSHOTS=1 cargo test --test registrar_registry_test
+git diff -- tests/test_snapshots
+```
+
+CI also checks `tests/test_snapshots/` after the test suite runs and fails if
+new or modified snapshot files are left uncommitted.

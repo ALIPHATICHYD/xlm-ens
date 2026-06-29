@@ -1,6 +1,6 @@
 use crate::config::NetworkConfig;
 use crate::export;
-use crate::output::OutputFormat;
+use crate::output::{emit_error, print_human, print_human_err, OutputFormat};
 use serde_json::json;
 use xlm_ns_sdk::client::XlmNsClient;
 use xlm_ns_sdk::errors::SdkError;
@@ -76,13 +76,13 @@ fn is_timeout_error(err: &SdkError) -> bool {
 
 fn progress(output: OutputFormat, fetched: usize, total: usize) {
     if output == OutputFormat::Human {
-        eprintln!("Fetched {fetched}/{total} names...");
+        print_human_err(&format!("Fetched {fetched}/{total} names..."));
     }
 }
 
 fn print_human_batch(owner: &str, names: &[ResolutionResult], printed_header: &mut bool) {
     if !*printed_header {
-        println!("Portfolio for {owner}:");
+        print_human(&format!("Portfolio for {owner}:"));
         *printed_header = true;
     }
 
@@ -91,7 +91,7 @@ fn print_human_batch(owner: &str, names: &[ResolutionResult], printed_header: &m
             .expires_at
             .map(|value| value.to_string())
             .unwrap_or_else(|| "unknown".to_string());
-        println!("  - {} (expires_at: {expires})", entry.name);
+        print_human(&format!("  - {} (expires_at: {expires})", entry.name));
     }
 }
 
@@ -142,9 +142,9 @@ pub async fn run_portfolio(
                 Ok(page) => break page,
                 Err(err) if is_timeout_error(&err) && page_size > MIN_BATCH_SIZE => {
                     page_size = (page_size / 2).max(MIN_BATCH_SIZE);
-                    eprintln!(
+                    print_human_err(&format!(
                         "RPC timed out while fetching portfolio; retrying with batch size {page_size}"
-                    );
+                    ));
                     continue;
                 }
                 Err(err) => {
@@ -169,7 +169,7 @@ pub async fn run_portfolio(
     }
 
     if names.is_empty() && output == OutputFormat::Human {
-        println!("Portfolio for {owner}:\n  [no names found]");
+        print_human(&format!("Portfolio for {owner}:\n  [no names found]"));
         if let Some(total) = total_seen {
             progress(output, 0, total);
         }

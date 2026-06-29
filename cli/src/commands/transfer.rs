@@ -1,5 +1,5 @@
 use crate::config::NetworkConfig;
-use crate::output::{emit, OutputFormat};
+use crate::output::{emit, with_spinner, OutputFormat};
 use crate::signer::SignerProfile;
 use anyhow::Context;
 use serde_json::json;
@@ -27,14 +27,17 @@ pub async fn run_transfer(
         human_lines.push(format!("  Signer: {}", s.describe()));
     }
 
-    let submission = client
-        .transfer(TransferRequest {
+    let submission = with_spinner(
+        format!("Submitting transfer for {name}"),
+        output,
+        client.transfer(TransferRequest {
             name: name.into(),
             new_owner: new_owner.into(),
             signer: signer.as_ref().map(|s| s.name.clone()),
-        })
-        .await
-        .context("Failed to submit transfer")?;
+        }),
+    )
+    .await
+    .context("Failed to submit transfer")?;
 
     let verified_owner = match client.get_registration(name).await {
         Ok(Some(reg)) => reg.address,

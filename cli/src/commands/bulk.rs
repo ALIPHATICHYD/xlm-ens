@@ -1,4 +1,5 @@
 use crate::config::NetworkConfig;
+use crate::output::{print_human, progress_bar, with_spinner, OutputFormat};
 use anyhow::Context;
 use serde::Deserialize;
 use std::fs::File;
@@ -56,12 +57,12 @@ pub async fn run_bulk_register(
     };
 
     if dry_run {
-        println!("Dry run: The following names would be registered:");
+        print_human("Dry run: The following names would be registered:");
         for record in records {
-            println!(
+            print_human(&format!(
                 "  - Name: {}, Duration: {}, Owner: {}",
                 record.name, record.duration, record.owner
-            );
+            ));
         }
     } else {
         let registrar_id = config
@@ -79,31 +80,37 @@ pub async fn run_bulk_register(
         )
         .with_registrar(registrar_id.clone());
 
+        let progress = progress_bar(records.len() as u64, "Bulk register", OutputFormat::Human);
         for record in records {
-            println!("Registering {}...", record.name);
-            match client
-                .register(xlm_ns_sdk::types::RegistrationRequest {
+            print_human(&format!("Registering {}...", record.name));
+            match with_spinner(
+                format!("Submitting registration for {}", record.name),
+                OutputFormat::Human,
+                client.register(xlm_ns_sdk::types::RegistrationRequest {
                     label: record.name.clone(),
                     owner: record.owner.clone(),
                     duration_years: record.duration,
                     signer: None,
-                })
-                .await
+                }),
+            )
+            .await
             {
                 Ok(receipt) => {
-                    println!(
-                        "  - SUCCESS: registered {} to {}",
-                        receipt.name, receipt.owner
-                    );
-                    println!("    Fee paid: {} {}", receipt.fee_paid, "XLM");
-                    println!("    Expires at: {}", receipt.expires_at);
-                    println!("    Status: {}", receipt.submission.status);
-                    println!("    Transaction Hash: {}", receipt.submission.tx_hash);
+                    print_human(&format!(
+                        "  - SUCCESS: registered {} to {}\n    Fee paid: {} XLM\n    Expires at: {}\n    Status: {}\n    Transaction Hash: {}",
+                        receipt.name, receipt.owner, receipt.fee_paid, receipt.expires_at, receipt.submission.status, receipt.submission.tx_hash
+                    ));
                 }
                 Err(e) => {
-                    println!("  - ERROR: Failed to register {}: {}", record.name, e);
+                    print_human(&format!("  - ERROR: Failed to register {}: {}", record.name, e));
                 }
             }
+            if let Some(ref bar) = progress {
+                bar.inc(1);
+            }
+        }
+        if let Some(bar) = progress {
+            bar.finish_with_message("Bulk register complete");
         }
     }
 
@@ -146,9 +153,9 @@ pub async fn run_bulk_renew(
     };
 
     if dry_run {
-        println!("Dry run: The following names would be renewed:");
+        print_human("Dry run: The following names would be renewed:");
         for record in records {
-            println!("  - Name: {}, Duration: {}", record.name, record.duration);
+            print_human(&format!("  - Name: {}, Duration: {}", record.name, record.duration));
         }
     } else {
         let registrar_id = config
@@ -166,27 +173,36 @@ pub async fn run_bulk_renew(
         )
         .with_registrar(registrar_id.clone());
 
+        let progress = progress_bar(records.len() as u64, "Bulk renew", OutputFormat::Human);
         for record in records {
-            println!("Renewing {}...", record.name);
-            match client
-                .renew(xlm_ns_sdk::types::RenewRequest {
+            print_human(&format!("Renewing {}...", record.name));
+            match with_spinner(
+                format!("Submitting renewal for {}", record.name),
+                OutputFormat::Human,
+                client.renew(xlm_ns_sdk::types::RenewRequest {
                     label: record.name.clone(),
                     duration_years: record.duration,
                     signer: None,
-                })
-                .await
+                }),
+            )
+            .await
             {
                 Ok(receipt) => {
-                    println!("  - SUCCESS: renewed {}", receipt.name);
-                    println!("    Fee paid: {} {}", receipt.fee_paid, "XLM");
-                    println!("    Expires at: {}", receipt.expires_at);
-                    println!("    Status: {}", receipt.submission.status);
-                    println!("    Transaction Hash: {}", receipt.submission.tx_hash);
+                    print_human(&format!(
+                        "  - SUCCESS: renewed {}\n    Fee paid: {} XLM\n    Expires at: {}\n    Status: {}\n    Transaction Hash: {}",
+                        receipt.name, receipt.fee_paid, receipt.expires_at, receipt.submission.status, receipt.submission.tx_hash
+                    ));
                 }
                 Err(e) => {
-                    println!("  - ERROR: Failed to renew {}: {}", record.name, e);
+                    print_human(&format!("  - ERROR: Failed to renew {}: {}", record.name, e));
                 }
             }
+            if let Some(ref bar) = progress {
+                bar.inc(1);
+            }
+        }
+        if let Some(bar) = progress {
+            bar.finish_with_message("Bulk renew complete");
         }
     }
 

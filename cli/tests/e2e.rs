@@ -156,6 +156,54 @@ fn register_emits_human_json_and_csv() {
 }
 
 #[test]
+fn no_color_flag_disables_ansi_sequences() {
+    let mut args = base_args();
+    args.extend([
+        "--no-color".into(),
+        "register".into(),
+        "alice".into(),
+        account_address('H'),
+    ]);
+
+    let output = bin()
+        .args(&args)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(
+        !output.contains(&0x1b),
+        "expected no ANSI escape sequences when --no-color is set"
+    );
+}
+
+#[test]
+fn no_color_env_var_disables_ansi_sequences() {
+    let mut args = base_args();
+    args.extend([
+        "register".into(),
+        "alice".into(),
+        account_address('H'),
+    ]);
+
+    let output = bin()
+        .env("NO_COLOR", "1")
+        .args(&args)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(
+        !output.contains(&0x1b),
+        "expected no ANSI escape sequences when NO_COLOR is set"
+    );
+}
+
+#[test]
 fn resolve_emits_human_json_and_csv() {
     let mut human_args = base_args();
     human_args.extend(["resolve".into(), "alice.xlm".into()]);

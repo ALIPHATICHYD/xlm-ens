@@ -90,10 +90,17 @@ fail with a diff showing old vs. new.
 ```sh
 # Re-run the integration tests in update mode.
 UPDATE_SNAPSHOTS=1 cargo test --test registrar_registry_test
+
+# Review the exact snapshot diff before committing.
+git diff -- tests/test_snapshots
 ```
 
 Review the diff in `tests/test_snapshots/` before committing.  Never commit a
 snapshot update without understanding why the output changed.
+
+CI runs `./scripts/check-snapshots.sh tests/test_snapshots` after the test
+suite. If snapshot files change during CI, the job fails and prints the diff so
+the reviewer can inspect the output before merging.
 
 Snapshot filenames follow this convention:
 
@@ -242,7 +249,7 @@ cargo install --locked soroban-cli
 | Job | What it checks | Blocks merge? |
 |-----|---------------|---------------|
 | `fmt` | `cargo fmt --all --check` | Yes |
-| `test` | `cargo test --workspace` | Yes |
+| `test` | Workspace tests plus snapshot drift check | Yes |
 | `artifacts` | Contract WASM builds + spec extraction | Yes |
 
 A PR that breaks any of these jobs will not be merged.

@@ -1,5 +1,5 @@
 use crate::config::NetworkConfig;
-use crate::output::{emit, OutputFormat};
+use crate::output::{emit, emit_error, with_spinner, OutputFormat};
 use crate::signer::SignerProfile;
 use anyhow::Context;
 use serde_json::json;
@@ -30,14 +30,17 @@ pub async fn run_renew(
     match registration {
         Some(_) => {
             let signer_description = signer.as_ref().map(|s| s.describe());
-            let receipt = client
-                .renew(RenewalRequest {
+            let receipt = with_spinner(
+                format!("Submitting renewal for {name}"),
+                output,
+                client.renew(RenewalRequest {
                     name: name.into(),
                     additional_years: years as u32,
                     signer: signer.as_ref().map(|s| s.name.clone()),
-                })
-                .await
-                .context("Failed to renew name")?;
+                }),
+            )
+            .await
+            .context("Failed to renew name")?;
 
             let mut human_lines = Vec::new();
             if let Some(desc) = signer_description {

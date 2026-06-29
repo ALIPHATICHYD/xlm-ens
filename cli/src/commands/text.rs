@@ -1,10 +1,16 @@
 use crate::config::NetworkConfig;
+use crate::output::{print_human, with_spinner, OutputFormat};
 use crate::signer::SignerProfile;
 use anyhow::Context;
 use xlm_ns_sdk::client::XlmNsClient;
 use xlm_ns_sdk::types::TextRecordUpdate;
 
-pub async fn run_get(config: NetworkConfig, name: &str, key: &str) -> anyhow::Result<()> {
+pub async fn run_get(
+    config: NetworkConfig,
+    output: OutputFormat,
+    name: &str,
+    key: &str,
+) -> anyhow::Result<()> {
     let client = XlmNsClient::new(
         config.rpc_url,
         Some(config.network_passphrase),
@@ -14,15 +20,18 @@ pub async fn run_get(config: NetworkConfig, name: &str, key: &str) -> anyhow::Re
         config.auction_contract_id.clone(),
     );
 
-    let record = client
-        .get_text_record(name, key)
-        .await
-        .context("Failed to fetch text record")?;
+    let record = with_spinner(
+        format!("Fetching text record {name}:{key}"),
+        output,
+        client.get_text_record(name, key),
+    )
+    .await
+    .context("Failed to fetch text record")?;
 
     if let Some(val) = record.value {
-        println!("{}: {} = \"{}\"", name, key, val);
+        print_human(&format!("{}: {} = \"{}\"", name, key, val));
     } else {
-        println!("{}: {} = [NOT SET]", name, key);
+        print_human(&format!("{}: {} = [NOT SET]", name, key));
     }
 
     Ok(())
@@ -30,6 +39,7 @@ pub async fn run_get(config: NetworkConfig, name: &str, key: &str) -> anyhow::Re
 
 pub async fn run_set(
     config: NetworkConfig,
+    output: OutputFormat,
     name: &str,
     key: &str,
     value: Option<String>,
@@ -45,22 +55,26 @@ pub async fn run_set(
     );
 
     if let Some(ref s) = signer {
-        println!("  Signer: {}", s.describe());
+        print_human(&format!("  Signer: {}", s.describe()));
     }
 
-    let submission = client
-        .set_text_record(TextRecordUpdate {
+    let submission = with_spinner(
+        format!("Submitting text record update for {name}:{key}"),
+        output,
+        client.set_text_record(TextRecordUpdate {
             name: name.into(),
             key: key.into(),
             value,
             signer: signer.as_ref().map(|s| s.name.clone()),
-        })
-        .await
-        .context("Failed to update text record")?;
+        }),
+    )
+    .await
+    .context("Failed to update text record")?;
 
-    println!("SUCCESS: text record update submitted");
-    println!("  Status: {}", submission.status);
-    println!("  Transaction Hash: {}", submission.tx_hash);
+    print_human(&format!(
+        "SUCCESS: text record update submitted\n  Status: {}\n  Transaction Hash: {}",
+        submission.status, submission.tx_hash
+    ));
 
     Ok(())
 }

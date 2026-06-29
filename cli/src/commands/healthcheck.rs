@@ -1,5 +1,5 @@
 use crate::config::{ContractKind, NetworkConfig};
-use crate::output::{emit, OutputFormat};
+use crate::output::{emit, with_spinner, OutputFormat};
 use serde_json::json;
 use xlm_ns_sdk::client::XlmNsClient;
 use xlm_ns_sdk::errors::SdkError;
@@ -43,7 +43,13 @@ pub async fn run_healthcheck(config: NetworkConfig, output: OutputFormat) -> any
         config.auction_contract_id.clone(),
     );
 
-    let (rpc_ok, rpc_detail) = match probe_client.get_registration("healthcheck-probe.xlm").await {
+    let (rpc_ok, rpc_detail) = match with_spinner(
+        "Checking RPC connectivity",
+        output,
+        probe_client.get_registration("healthcheck-probe.xlm"),
+    )
+    .await
+    {
         Ok(_) => (true, format!("reachable — {}", config.rpc_url)),
         Err(SdkError::Transport(msg)) => (false, format!("unreachable — {msg}")),
         Err(err) => (true, format!("reachable ({})", err)),

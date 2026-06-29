@@ -1,5 +1,5 @@
 use crate::config::NetworkConfig;
-use crate::output::{emit, OutputFormat};
+use crate::output::{emit, emit_error, with_spinner, OutputFormat};
 use anyhow::Context;
 use serde_json::json;
 use xlm_ns_sdk::client::XlmNsClient;
@@ -18,10 +18,13 @@ pub async fn run_reverse(
         config.auction_contract_id.clone(),
     );
 
-    let result = client
-        .reverse_resolve(address)
-        .await
-        .context("Failed to perform reverse lookup")?;
+    let result = with_spinner(
+        format!("Looking up {address}"),
+        output,
+        client.reverse_resolve(address),
+    )
+    .await
+    .context("Failed to perform reverse lookup")?;
 
     if let Some(name) = result.primary_name {
         let resolved_address = result.address.clone();

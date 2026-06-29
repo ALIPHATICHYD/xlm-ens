@@ -1,4 +1,5 @@
 use crate::config::NetworkConfig;
+use crate::output::{print_human, with_spinner, OutputFormat};
 use anyhow::Context;
 use xlm_ns_sdk::client::XlmNsClient;
 use xlm_ns_sdk::types::{
@@ -7,6 +8,7 @@ use xlm_ns_sdk::types::{
 
 pub async fn run_register_parent(
     config: NetworkConfig,
+    output: OutputFormat,
     parent: &str,
     owner: &str,
 ) -> anyhow::Result<()> {
@@ -19,24 +21,30 @@ pub async fn run_register_parent(
         config.auction_contract_id.clone(),
     );
 
-    let submission = client
-        .register_parent(
+    let submission = with_spinner(
+        format!("Submitting parent registration for {parent}"),
+        output,
+        client.register_parent(
             RegisterParentRequest {
                 parent: parent.into(),
                 owner: owner.into(),
             },
             false,
-        )
-        .await
-        .context("Failed to register parent domain")?;
+        ),
+    )
+    .await
+    .context("Failed to register parent domain")?;
 
-    println!("SUCCESS: registered parent domain {parent} with owner {owner}");
-    println!("  Transaction Hash: {}", submission.tx_hash);
+    print_human(&format!(
+        "SUCCESS: registered parent domain {parent} with owner {owner}\n  Transaction Hash: {}",
+        submission.tx_hash
+    ));
     Ok(())
 }
 
 pub async fn run_add_controller(
     config: NetworkConfig,
+    output: OutputFormat,
     parent: &str,
     controller: &str,
 ) -> anyhow::Result<()> {
@@ -49,24 +57,30 @@ pub async fn run_add_controller(
         config.auction_contract_id.clone(),
     );
 
-    let submission = client
-        .add_controller(
+    let submission = with_spinner(
+        format!("Submitting controller update for {parent}"),
+        output,
+        client.add_controller(
             AddControllerRequest {
                 parent: parent.into(),
                 controller: controller.into(),
             },
             false,
-        )
-        .await
-        .context("Failed to add controller")?;
+        ),
+    )
+    .await
+    .context("Failed to add controller")?;
 
-    println!("SUCCESS: added controller {controller} to parent domain {parent}");
-    println!("  Transaction Hash: {}", submission.tx_hash);
+    print_human(&format!(
+        "SUCCESS: added controller {controller} to parent domain {parent}\n  Transaction Hash: {}",
+        submission.tx_hash
+    ));
     Ok(())
 }
 
 pub async fn run_create_subdomain(
     config: NetworkConfig,
+    output: OutputFormat,
     label: &str,
     parent: &str,
     owner: &str,
@@ -80,26 +94,32 @@ pub async fn run_create_subdomain(
         config.auction_contract_id.clone(),
     );
 
-    let submission = client
-        .create_subdomain(
+    let submission = with_spinner(
+        format!("Submitting subdomain creation for {label}.{parent}"),
+        output,
+        client.create_subdomain(
             CreateSubdomainRequest {
                 label: label.into(),
                 parent: parent.into(),
                 owner: owner.into(),
             },
             false,
-        )
-        .await
-        .context("Failed to create subdomain")?;
+        ),
+    )
+    .await
+    .context("Failed to create subdomain")?;
 
     let fqdn = format!("{label}.{parent}");
-    println!("SUCCESS: created subdomain {fqdn} with owner {owner}");
-    println!("  Transaction Hash: {}", submission.tx_hash);
+    print_human(&format!(
+        "SUCCESS: created subdomain {fqdn} with owner {owner}\n  Transaction Hash: {}",
+        submission.tx_hash
+    ));
     Ok(())
 }
 
 pub async fn run_transfer_subdomain(
     config: NetworkConfig,
+    output: OutputFormat,
     fqdn: &str,
     new_owner: &str,
 ) -> anyhow::Result<()> {
@@ -112,18 +132,23 @@ pub async fn run_transfer_subdomain(
         config.auction_contract_id.clone(),
     );
 
-    let submission = client
-        .transfer_subdomain(
+    let submission = with_spinner(
+        format!("Submitting subdomain transfer for {fqdn}"),
+        output,
+        client.transfer_subdomain(
             TransferSubdomainRequest {
                 fqdn: fqdn.into(),
                 new_owner: new_owner.into(),
             },
             false,
-        )
-        .await
-        .context("Failed to transfer subdomain")?;
+        ),
+    )
+    .await
+    .context("Failed to transfer subdomain")?;
 
-    println!("SUCCESS: transferred subdomain {fqdn} to new owner {new_owner}");
-    println!("  Transaction Hash: {}", submission.tx_hash);
+    print_human(&format!(
+        "SUCCESS: transferred subdomain {fqdn} to new owner {new_owner}\n  Transaction Hash: {}",
+        submission.tx_hash
+    ));
     Ok(())
 }

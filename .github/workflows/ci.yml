@@ -84,6 +84,9 @@ jobs:
           name: Test Results
           path: target/nextest/ci/junit.xml
           reporter: java-junit
+      - name: Verify snapshot files are unchanged
+        if: always()
+        run: bash ./scripts/check-snapshots.sh tests/test_snapshots
 
   artifacts:
     name: Contract Artifacts (WASM + spec)

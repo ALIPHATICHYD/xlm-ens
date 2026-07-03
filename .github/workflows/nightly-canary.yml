@@ -15,7 +15,7 @@ jobs:
           - name: testnet
             rpc_url: https://soroban-testnet.stellar.org
           - name: mainnet
-            rpc_url: https://soroban-rpc.mainnet.stellar.org
+            rpc_url: https://mainnet.sorobanrpc.com
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +38,8 @@ jobs:
     needs: canary
     if: failure()
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     strategy:
       matrix:
         include:
@@ -70,10 +72,8 @@ jobs:
 
       - name: Send PagerDuty notification
         if: steps.parse_log.outputs.severity == 'critical'
-        uses: peter-evans/pagerduty-action@v1.0.0
-        with:
-          token: ${{ secrets.PAGERDUTY_API_KEY }}
-          payload: |
+        env:
+          PAYLOAD: |
             {
               "payload": {
                 "summary": "🚨 Critical Canary Test Failure on ${{ matrix.name }}: ${{ steps.parse_log.outputs.summary }}",
@@ -89,15 +89,23 @@ jobs:
               "routing_key": "${{ secrets.PAGERDUTY_ROUTING_KEY }}",
               "event_action": "trigger"
             }
+        run: |
+          curl -X POST https://events.pagerduty.com/v2/enqueue \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
 
       - name: Create GitHub issue
-        uses: peter-evans/create-issue@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          title: "🚨 Canary Test Failure on ${{ matrix.name }}"
-          body: |
-            **Summary**: ${{ steps.parse_log.outputs.summary }}
-            **Details**:
-            ${{ steps.parse_log.outputs.details }}
-            **CI Run**: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View CI Run>
-          labels: bug, canary-failure
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat << 'EOF' > issue_body.md
+          **Summary**: ${{ steps.parse_log.outputs.summary }}
+          **Details**:
+          ${{ steps.parse_log.outputs.details }}
+          **CI Run**: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View CI Run>
+          EOF
+          gh issue create \
+            --title "🚨 Canary Test Failure on ${{ matrix.name }}" \
+            --body-file issue_body.md \
+            --label "bug" \
+            --label "canary-failure"

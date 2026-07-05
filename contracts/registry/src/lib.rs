@@ -2,8 +2,8 @@
 mod test;
 
 use soroban_sdk::{
-    contract, contractclient, contracterror, contractimpl, contracttype,
-    symbol_short, Address, Bytes, BytesN, Env, String, Vec,
+    contract, contractclient, contracterror, contractimpl, contracttype, symbol_short, Address,
+    Bytes, BytesN, Env, String, Vec,
 };
 use xlm_ns_common::soroban::validate_fqdn_soroban;
 use xlm_ns_common::time::{is_active_at, is_claimable_at};
@@ -405,7 +405,12 @@ impl RegistryContract {
         Ok(())
     }
 
-    pub fn update_owner(env: Env, name: String, caller: Address, new_owner: Address) -> Result<(), RegistryError> {
+    pub fn update_owner(
+        env: Env,
+        name: String,
+        caller: Address,
+        new_owner: Address,
+    ) -> Result<(), RegistryError> {
         // Only the NFT contract can call this function
         let nft_contract: Address = env
             .storage()

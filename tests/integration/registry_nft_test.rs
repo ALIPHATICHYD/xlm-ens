@@ -1,12 +1,11 @@
-
 // c:\Users\USER\Downloads\xlm-ens	ests\integrationegistry_nft_test.rs
 
 #[cfg(test)]
 mod registry_nft_integration {
     use soroban_sdk::{testutils::Address as _, Address, Env, String};
+    use xlm_ns_nft::{NftContract, NftContractClient};
     use xlm_ns_registrar::{RegistrarContract, RegistrarContractClient};
     use xlm_ns_registry::{RegistryContract, RegistryContractClient};
-    use xlm_ns_nft::{NftContract, NftContractClient};
 
     struct TimeHelper {
         pub now: u64,
@@ -43,7 +42,7 @@ mod registry_nft_integration {
         let registrar = RegistrarContractClient::new(&env, &registrar_id);
         let registry = RegistryContractClient::new(&env, &registry_id);
         let nft = NftContractClient::new(&env, &nft_id);
-        
+
         // Initialize contracts
         registry.initialize(&admin);
         registrar.initialize(&registry_id, &admin);

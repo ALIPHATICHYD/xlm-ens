@@ -4,6 +4,7 @@ pub mod bulk;
 pub mod completions;
 pub mod config;
 pub mod healthcheck;
+pub mod migrate;
 pub mod nft;
 pub mod portfolio;
 pub mod quote;
@@ -17,5 +18,3 @@ pub mod transfer;
 pub mod validate;
 pub mod watch;
 pub mod whois;
-pub mod migrate;
-

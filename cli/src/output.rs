@@ -43,11 +43,16 @@ fn stylize_line(line: &str) -> String {
     if trimmed.starts_with("SUCCESS:") || trimmed.starts_with("  - SUCCESS:") {
         return line.green().bold().to_string();
     }
-    if trimmed.starts_with("ERROR:") || trimmed.starts_with("  - ERROR:") || trimmed.starts_with("Failed ")
+    if trimmed.starts_with("ERROR:")
+        || trimmed.starts_with("  - ERROR:")
+        || trimmed.starts_with("Failed ")
     {
         return line.red().bold().to_string();
     }
-    if trimmed.starts_with("Warning:") || trimmed.contains("timed out") || trimmed.contains("retrying") {
+    if trimmed.starts_with("Warning:")
+        || trimmed.contains("timed out")
+        || trimmed.contains("retrying")
+    {
         return line.yellow().bold().to_string();
     }
     if trimmed.starts_with("[PASS]")
@@ -82,7 +87,10 @@ fn stylize_line(line: &str) -> String {
 }
 
 pub fn stylize_block(text: &str) -> String {
-    text.lines().map(stylize_line).collect::<Vec<_>>().join("\n")
+    text.lines()
+        .map(stylize_line)
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 pub fn print_human(text: &str) {

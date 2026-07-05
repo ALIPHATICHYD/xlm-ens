@@ -5,14 +5,13 @@ mod export;
 mod output;
 mod signer;
 
-
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use commands::completions::CompletionCommand;
 use commands::watch::WatchCommand;
-use config::{ContractKind, ContractOverrides, Network, ResolveOptions, load_config};
+use config::{load_config, ContractKind, ContractOverrides, Network, ResolveOptions};
 use output::{configure as configure_output, print_human_err, OutputFormat};
-use signer::{SignerProfile, load_profile};
+use signer::{load_profile, SignerProfile};
 use std::path::PathBuf;
 use std::process;
 
@@ -77,7 +76,6 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
 }
-
 
 #[derive(Subcommand, Clone)]
 enum MigrateCommands {
@@ -148,7 +146,6 @@ enum MigrateCommands {
 
 #[derive(Subcommand, Clone)]
 enum Commands {
-
     /// Migrate Soroban contract storage safely (transform/verify; export/import stubbed)
     Migrate {
         #[command(subcommand)]
@@ -465,7 +462,6 @@ enum ConfigCommands {
 
 #[derive(Subcommand, Clone)]
 enum TextCommand {
-
     /// Read a text record value for a name.
     Get { name: String, key: String },
     /// Write a text record value on a name.
@@ -499,7 +495,6 @@ async fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
     let network = cli.network;
 
     let contract_overrides = ContractOverrides {
-
         registry_contract_id: cli.registry_contract_id.clone(),
         registrar_contract_id: cli.registrar_contract_id.clone(),
         resolver_contract_id: cli.resolver_contract_id.clone(),
@@ -524,7 +519,6 @@ async fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
         return Err(anyhow::anyhow!(err));
     }
 
-
     match cli.command {
         Commands::Migrate { command } => match command {
             MigrateCommands::Transform {
@@ -532,53 +526,60 @@ async fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
                 to_version,
                 in_file,
                 out_file,
-            } => commands::migrate::run_transform(
-                cli.output,
-                config.clone(),
-                from_version,
-                to_version,
-                in_file,
-                out_file,
-                cli.dry_run,
-            )
-            .await,
+            } => {
+                commands::migrate::run_transform(
+                    cli.output,
+                    config.clone(),
+                    from_version,
+                    to_version,
+                    in_file,
+                    out_file,
+                    cli.dry_run,
+                )
+                .await
+            }
             MigrateCommands::DryRun {
                 from_version,
                 to_version,
                 in_file,
-            } => commands::migrate::run_transform(
-                cli.output,
-                config.clone(),
-                from_version,
-                to_version,
-                in_file,
-                // out_file is unused in dry_run; still required by signature.
-                PathBuf::from("/dev/null"),
-                true,
-            )
-            .await,
+            } => {
+                commands::migrate::run_transform(
+                    cli.output,
+                    config.clone(),
+                    from_version,
+                    to_version,
+                    in_file,
+                    // out_file is unused in dry_run; still required by signature.
+                    PathBuf::from("/dev/null"),
+                    true,
+                )
+                .await
+            }
             MigrateCommands::Verify {
                 source_file,
                 target_file,
                 strict,
-            } => commands::migrate::run_verify(
-                cli.output,
-                config.clone(),
-                source_file,
-                target_file,
-                strict,
-            )
-            .await,
+            } => {
+                commands::migrate::run_verify(
+                    cli.output,
+                    config.clone(),
+                    source_file,
+                    target_file,
+                    strict,
+                )
+                .await
+            }
             MigrateCommands::RollbackMetadata {
                 contract_id,
                 wasm_hash_out,
-            } => commands::migrate::run_rollback_metadata(
-                cli.output,
+            } => {
+                commands::migrate::run_rollback_metadata(cli.output, contract_id, wasm_hash_out)
+                    .await
+            }
+            MigrateCommands::Export {
                 contract_id,
-                wasm_hash_out,
-            )
-            .await,
-            MigrateCommands::Export { contract_id, out_file } => {
+                out_file,
+            } => {
                 commands::migrate::run_export(cli.output, cli.dry_run, contract_id, out_file).await
             }
             MigrateCommands::Import { contract_id, file } => {
@@ -586,7 +587,6 @@ async fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
             }
         },
         Commands::Register {
-
             name,
             owner,
             interactive,
@@ -686,13 +686,8 @@ async fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
                 commands::auction::run_inspect(config, &name).await
             }
             AuctionCommands::Settle { name, signer } => {
-                commands::auction::run_settle(
-                    config,
-                    cli.output,
-                    &name,
-                    resolve_signer(signer)?,
-                )
-                .await
+                commands::auction::run_settle(config, cli.output, &name, resolve_signer(signer)?)
+                    .await
             }
             AuctionCommands::Export { .. } | AuctionCommands::Import { .. } => Err(
                 anyhow::anyhow!("auction text import/export is not implemented"),
@@ -717,13 +712,8 @@ async fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
                 commands::subdomain::run_register_parent(config, cli.output, &parent, &owner).await
             }
             SubdomainCommands::AddController { parent, controller } => {
-                commands::subdomain::run_add_controller(
-                    config,
-                    cli.output,
-                    &parent,
-                    &controller,
-                )
-                .await
+                commands::subdomain::run_add_controller(config, cli.output, &parent, &controller)
+                    .await
             }
             SubdomainCommands::Create {
                 label,
@@ -731,22 +721,13 @@ async fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
                 owner,
             } => {
                 commands::subdomain::run_create_subdomain(
-                    config,
-                    cli.output,
-                    &label,
-                    &parent,
-                    &owner,
+                    config, cli.output, &label, &parent, &owner,
                 )
                 .await
             }
             SubdomainCommands::Transfer { fqdn, new_owner } => {
-                commands::subdomain::run_transfer_subdomain(
-                    config,
-                    cli.output,
-                    &fqdn,
-                    &new_owner,
-                )
-                .await
+                commands::subdomain::run_transfer_subdomain(config, cli.output, &fqdn, &new_owner)
+                    .await
             }
         },
         Commands::Nft(command) => match command {
@@ -1067,7 +1048,10 @@ mod tests {
             ..Default::default()
         };
         let result = validate_contract_policy(&cmd, &overrides, &config_with_all_contracts());
-        assert!(result.is_ok(), "registry-contract-id should be allowed for register");
+        assert!(
+            result.is_ok(),
+            "registry-contract-id should be allowed for register"
+        );
     }
 
     #[test]
@@ -1121,7 +1105,10 @@ mod tests {
             ..Default::default()
         };
         let result = validate_contract_policy(&cmd, &overrides, &config_with_all_contracts());
-        assert!(result.is_ok(), "registry-contract-id should be allowed for resolve");
+        assert!(
+            result.is_ok(),
+            "registry-contract-id should be allowed for resolve"
+        );
     }
 
     #[test]
@@ -1193,7 +1180,10 @@ mod tests {
             ..Default::default()
         };
         let result = validate_contract_policy(&cmd, &overrides, &config_with_all_contracts());
-        assert!(result.is_ok(), "registry-contract-id should be allowed for quote");
+        assert!(
+            result.is_ok(),
+            "registry-contract-id should be allowed for quote"
+        );
     }
 
     // --- availability ---
@@ -1352,8 +1342,6 @@ fn validate_contract_policy(
         // (they are reflected in the output) and none are required.
         Commands::Migrate { .. } => ("migrate", &[], &[]),
         Commands::Healthcheck => (
-
-
             "healthcheck",
             &[
                 ContractKind::Registry,

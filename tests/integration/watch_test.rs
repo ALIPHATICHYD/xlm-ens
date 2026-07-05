@@ -22,7 +22,9 @@ fn test_watch_command() -> Result<(), Box<dyn std::error::Error>> {
         .arg("test.xlm")
         .assert()
         .success()
-        .stdout(predicate::str::contains("Added 'test.xlm' to the watchlist."));
+        .stdout(predicate::str::contains(
+            "Added 'test.xlm' to the watchlist.",
+        ));
 
     let mut cmd = Command::cargo_bin("xlm-ns")?;
     cmd.arg("watch")

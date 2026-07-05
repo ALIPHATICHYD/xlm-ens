@@ -14,11 +14,7 @@ fn setup(env: &Env) -> RegistryContractClient<'static> {
     client
 }
 
-fn register_domain(
-    env: &Env,
-    registry: &RegistryContractClient,
-    name_str: &str,
-) -> (Address, u64) {
+fn register_domain(env: &Env, registry: &RegistryContractClient, name_str: &str) -> (Address, u64) {
     let owner = Address::generate(env);
     let now = env.ledger().timestamp();
     let name = String::from_str(env, name_str);

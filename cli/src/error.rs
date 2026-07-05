@@ -297,7 +297,13 @@ fn classify_text(text: &str, context: &ErrorContext, err: Option<&Error>) -> Opt
     }
 
     if let Some(code) = extract_contract_code(text) {
-        return Some(contract_error_for_domain(context.domain, code, context, err, None));
+        return Some(contract_error_for_domain(
+            context.domain,
+            code,
+            context,
+            err,
+            None,
+        ));
     }
 
     if lower.contains("already registered") {

@@ -18,13 +18,9 @@ pub async fn run_resolve(
         config.auction_contract_id.clone(),
     );
 
-    let result = with_spinner(
-        format!("Resolving {name}"),
-        output,
-        client.resolve(name),
-    )
-    .await
-    .context("Failed to resolve name")?;
+    let result = with_spinner(format!("Resolving {name}"), output, client.resolve(name))
+        .await
+        .context("Failed to resolve name")?;
 
     if let Some(addr) = result.address.clone() {
         let mut human_lines = vec![format!("Name: {}\nAddress: {}", result.name, addr)];

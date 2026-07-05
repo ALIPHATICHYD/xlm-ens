@@ -95,7 +95,11 @@ impl NftContract {
             .unwrap_or(CONTRACT_VERSION)
     }
 
-    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>, migration_data: Bytes) -> Result<(), NftError> {
+    pub fn upgrade(
+        env: Env,
+        new_wasm_hash: BytesN<32>,
+        migration_data: Bytes,
+    ) -> Result<(), NftError> {
         let admin: Address = env
             .storage()
             .instance()
@@ -388,11 +392,7 @@ impl NftContract {
         Ok(())
     }
 
-    pub fn sync_expiry(
-        env: Env,
-        token_id: String,
-        new_expiry: u64,
-    ) -> Result<(), NftError> {
+    pub fn sync_expiry(env: Env, token_id: String, new_expiry: u64) -> Result<(), NftError> {
         let admin: Address = env
             .storage()
             .instance()
@@ -408,11 +408,7 @@ impl NftContract {
         Ok(())
     }
 
-    pub fn sync_owner(
-        env: Env,
-        token_id: String,
-        new_owner: Address,
-    ) -> Result<(), NftError> {
+    pub fn sync_owner(env: Env, token_id: String, new_owner: Address) -> Result<(), NftError> {
         let admin: Address = env
             .storage()
             .instance()

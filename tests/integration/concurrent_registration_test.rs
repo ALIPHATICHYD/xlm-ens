@@ -1,9 +1,9 @@
+use soroban_sdk::token::{Client, StellarAssetClient};
 use soroban_sdk::{testutils::Address as _, Address, Env, String};
 use xlm_ns_auction::{AuctionContract, AuctionContractClient};
-use xlm_ns_registrar::{RegistrarContract, RegistrarContractClient, pricing};
 use xlm_ns_registrar::RegistrarError;
+use xlm_ns_registrar::{pricing, RegistrarContract, RegistrarContractClient};
 use xlm_ns_registry::{RegistryContract, RegistryContractClient};
-use soroban_sdk::token::{StellarAssetClient, Client};
 
 struct TimeHelper {
     pub now: u64,
@@ -21,7 +21,11 @@ impl TimeHelper {
     }
 }
 
-fn setup_registrar_registry() -> (Env, RegistrarContractClient<'static>, RegistryContractClient<'static>) {
+fn setup_registrar_registry() -> (
+    Env,
+    RegistrarContractClient<'static>,
+    RegistryContractClient<'static>,
+) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -37,7 +41,13 @@ fn setup_registrar_registry() -> (Env, RegistrarContractClient<'static>, Registr
     (env, registrar, registry)
 }
 
-fn setup_auction_and_token() -> (Env, AuctionContractClient<'static>, Address, StellarAssetClient<'static>, Client<'static>) {
+fn setup_auction_and_token() -> (
+    Env,
+    AuctionContractClient<'static>,
+    Address,
+    StellarAssetClient<'static>,
+    Client<'static>,
+) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -92,10 +102,15 @@ fn test_concurrent_registration_same_ledger() {
     let result2 = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         registrar.register(&label, &owner2, &1, &fee_stroops, &time.now);
     }));
-    assert!(result2.is_err(), "Second registration should fail due to already registered");
+    assert!(
+        result2.is_err(),
+        "Second registration should fail due to already registered"
+    );
 
     // Verify that the first owner is the owner in both contracts
-    let reg_record = registrar.registration(&name).expect("Registrar record should exist");
+    let reg_record = registrar
+        .registration(&name)
+        .expect("Registrar record should exist");
     assert_eq!(reg_record.owner, owner1);
     let reg_entry = registry.resolve(&name, &time.now);
     assert_eq!(reg_entry.owner, owner1);
@@ -138,7 +153,7 @@ fn test_registration_racing_against_auction_settlement() {
 
     // Place bids
     auction_client.place_bid(&name, &auction_winner, &500, &time.future(10)); // Higher bid
-    auction_client.place_bid(&name, &auction_loser, &300, &time.future(20));  // Lower bid
+    auction_client.place_bid(&name, &auction_loser, &300, &time.future(20)); // Lower bid
 
     // Advance time past auction end
     time.advance(101); // Now after ends_at
@@ -166,17 +181,28 @@ fn test_registration_racing_against_auction_settlement() {
     match settlement {
         Some(s) => {
             assert!(!s.sold, "Settlement should indicate the name was not sold");
-            assert_eq!(s.winner, None, "There should be no winner as the name was already taken");
+            assert_eq!(
+                s.winner, None,
+                "There should be no winner as the name was already taken"
+            );
         }
         None => {} // No settlement returned means the auction was not settled
     }
 
     // Verify the auction winner was fully refunded.
     // The auction contract should have transferred the 500 bid back to the auction_winner.
-    assert_eq!(token_client.balance(&auction_winner), 1000, "Auction winner should be fully refunded");
+    assert_eq!(
+        token_client.balance(&auction_winner),
+        1000,
+        "Auction winner should be fully refunded"
+    );
 
     // The auction loser also gets their bid back.
-    assert_eq!(token_client.balance(&auction_loser), 1000, "Auction loser should be fully refunded");
+    assert_eq!(
+        token_client.balance(&auction_loser),
+        1000,
+        "Auction loser should be fully refunded"
+    );
 }
 
 #[test]
@@ -201,17 +227,26 @@ fn test_registration_fails_if_price_exceeds_max_price() {
     let new_quote = registrar.quote_registration(&expensive_label, &1, &time.now);
     let new_fee = new_quote.fee_stroops;
     assert_eq!(new_fee, pricing::price_for_label_length(3));
-    assert!(new_fee > original_fee, "New fee should be higher for a shorter name");
+    assert!(
+        new_fee > original_fee,
+        "New fee should be higher for a shorter name"
+    );
 
     // 4. User attempts to register the *new*, more expensive name, but with the *old* `max_price`.
     // This simulates the original name's price increasing.
     let result = registrar.try_register(&expensive_label, &owner, &1, &max_price, &time.now);
 
     // 5. The registration should fail because the current price (new_fee) exceeds max_price.
-    assert!(result.is_err(), "Registration should fail due to price exceeding max_price");
+    assert!(
+        result.is_err(),
+        "Registration should fail due to price exceeding max_price"
+    );
     assert_eq!(result.err(), Some(Ok(RegistrarError::InsufficientFee)));
 
     // 6. Now, if the user re-quotes and uses the new, higher fee as max_price, it should succeed.
     let result_success = registrar.try_register(&expensive_label, &owner, &1, &new_fee, &time.now);
-    assert!(result_success.is_ok(), "Registration should succeed with updated max_price");
+    assert!(
+        result_success.is_ok(),
+        "Registration should succeed with updated max_price"
+    );
 }

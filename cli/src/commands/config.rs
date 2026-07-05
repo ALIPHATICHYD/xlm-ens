@@ -1,4 +1,4 @@
-use crate::config::{Network, ResolveOptions, config_template, load_config};
+use crate::config::{config_template, load_config, Network, ResolveOptions};
 use crate::output::{emit, print_human, OutputFormat};
 use serde_json::json;
 use std::env;
@@ -89,7 +89,10 @@ pub async fn run_validate(
     let mut failures = 0;
 
     if output == OutputFormat::Human {
-        print_human(&format!("Validating configuration for {}...", network.as_str()));
+        print_human(&format!(
+            "Validating configuration for {}...",
+            network.as_str()
+        ));
         for result in &validation.contract_id_format {
             if result.status == crate::commands::validate::ValidationStatus::Fail {
                 failures += 1;

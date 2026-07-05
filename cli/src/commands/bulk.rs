@@ -102,7 +102,10 @@ pub async fn run_bulk_register(
                     ));
                 }
                 Err(e) => {
-                    print_human(&format!("  - ERROR: Failed to register {}: {}", record.name, e));
+                    print_human(&format!(
+                        "  - ERROR: Failed to register {}: {}",
+                        record.name, e
+                    ));
                 }
             }
             if let Some(ref bar) = progress {
@@ -155,7 +158,10 @@ pub async fn run_bulk_renew(
     if dry_run {
         print_human("Dry run: The following names would be renewed:");
         for record in records {
-            print_human(&format!("  - Name: {}, Duration: {}", record.name, record.duration));
+            print_human(&format!(
+                "  - Name: {}, Duration: {}",
+                record.name, record.duration
+            ));
         }
     } else {
         let registrar_id = config
@@ -194,7 +200,10 @@ pub async fn run_bulk_renew(
                     ));
                 }
                 Err(e) => {
-                    print_human(&format!("  - ERROR: Failed to renew {}: {}", record.name, e));
+                    print_human(&format!(
+                        "  - ERROR: Failed to renew {}: {}",
+                        record.name, e
+                    ));
                 }
             }
             if let Some(ref bar) = progress {

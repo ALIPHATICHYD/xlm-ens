@@ -1,15 +1,14 @@
 #[cfg(test)] ///////
 mod tests {
     extern crate std;
- 
+
     use std::format;
- 
-    use soroban_sdk::{
-        contract, contractimpl, contracttype,
-        testutils::Address as _, Address, Env, String,
-    };
+
     use soroban_sdk::token;
- 
+    use soroban_sdk::{
+        contract, contractimpl, contracttype, testutils::Address as _, Address, Env, String,
+    };
+
     use crate::{AuctionContract, AuctionContractClient};
 
     #[contract]
@@ -28,18 +27,16 @@ mod tests {
     #[contractimpl]
     impl ReentrantToken {
         pub fn initialize(env: Env, auction: Address, bidder: Address, name: String) {
-            env.storage().instance().set(&ReentrantKey::Auction, &auction);
+            env.storage()
+                .instance()
+                .set(&ReentrantKey::Auction, &auction);
             env.storage().instance().set(&ReentrantKey::Bidder, &bidder);
             env.storage().instance().set(&ReentrantKey::Name, &name);
         }
 
         pub fn mint(env: Env, to: Address, amount: i128) {
             let key = ReentrantKey::Balance(to);
-            let balance = env
-                .storage()
-                .persistent()
-                .get::<_, i128>(&key)
-                .unwrap_or(0);
+            let balance = env.storage().persistent().get::<_, i128>(&key).unwrap_or(0);
             env.storage()
                 .persistent()
                 .set(&key, &balance.saturating_add(amount));
@@ -52,20 +49,21 @@ mod tests {
                 .unwrap_or(0)
         }
 
-        pub fn transfer(
-            env: Env,
-            from: Address,
-            to: Address,
-            amount: i128,
-        ) {
+        pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
             if !env
                 .storage()
                 .instance()
                 .get::<_, bool>(&ReentrantKey::Triggered)
                 .unwrap_or(false)
             {
-                env.storage().instance().set(&ReentrantKey::Triggered, &true);
-                let auction: Address = env.storage().instance().get(&ReentrantKey::Auction).unwrap();
+                env.storage()
+                    .instance()
+                    .set(&ReentrantKey::Triggered, &true);
+                let auction: Address = env
+                    .storage()
+                    .instance()
+                    .get(&ReentrantKey::Auction)
+                    .unwrap();
                 let bidder: Address = env.storage().instance().get(&ReentrantKey::Bidder).unwrap();
                 let name: String = env.storage().instance().get(&ReentrantKey::Name).unwrap();
                 let client = AuctionContractClient::new(&env, &auction);
@@ -155,7 +153,7 @@ mod tests {
         assert_eq!(token.balance(&bob), 1000);
         assert_eq!(token.balance(&treasury), 300);
     } //
- 
+
     #[test]
     fn reentrant_token_transfer_cannot_reenter_place_bid() {
         let env = Env::default();

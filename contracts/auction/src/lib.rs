@@ -512,9 +512,13 @@ where
         return Err(AuctionError::ReentrancyDetected);
     }
 
-    env.storage().instance().set(&DataKey::ReentrancyLock, &true);
+    env.storage()
+        .instance()
+        .set(&DataKey::ReentrancyLock, &true);
     let result = f();
-    env.storage().instance().set(&DataKey::ReentrancyLock, &false);
+    env.storage()
+        .instance()
+        .set(&DataKey::ReentrancyLock, &false);
     result
 }
 

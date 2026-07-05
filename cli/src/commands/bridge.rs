@@ -28,7 +28,10 @@ pub async fn run_register_chain(
     .await
     .context("Failed to register chain")?;
 
-    print_human(&format!("SUCCESS: registered bridge route for chain {}", chain));
+    print_human(&format!(
+        "SUCCESS: registered bridge route for chain {}",
+        chain
+    ));
     Ok(())
 }
 

@@ -435,7 +435,10 @@ mod tests {
         client.register(&label, &owner, &1, &overpay, &100);
         // Contract stores fee_stroops (the quoted fee), not the full max_price
         assert_eq!(client.treasury_balance(), quote.fee_stroops);
-        assert_eq!(client.accounting_report().treasury_balance, quote.fee_stroops);
+        assert_eq!(
+            client.accounting_report().treasury_balance,
+            quote.fee_stroops
+        );
     }
 
     #[test]

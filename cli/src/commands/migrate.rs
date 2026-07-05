@@ -13,7 +13,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum StorageScope {
-    Instance, 
+    Instance,
     Persistent,
     Temporary,
 }
@@ -60,9 +60,9 @@ pub fn read_state_file(path: &PathBuf) -> anyhow::Result<ContractStateFile> {
 }
 
 pub fn write_state_file(path: &PathBuf, state: &ContractStateFile) -> anyhow::Result<()> {
-    let raw = serde_json::to_vec_pretty(state)
-        .context("failed to serialize state file as JSON")?;
-    fs::write(path, raw).with_context(|| format!("failed to write state file: {}", path.display()))?;
+    let raw = serde_json::to_vec_pretty(state).context("failed to serialize state file as JSON")?;
+    fs::write(path, raw)
+        .with_context(|| format!("failed to write state file: {}", path.display()))?;
     Ok(())
 }
 
@@ -74,7 +74,10 @@ fn map_entries(state: &ContractStateFile) -> BTreeMap<(StorageScope, String), St
         .collect()
 }
 
-fn transform_state(mut state: ContractStateFile, args: &TransformArgs) -> anyhow::Result<ContractStateFile> {
+fn transform_state(
+    mut state: ContractStateFile,
+    args: &TransformArgs,
+) -> anyhow::Result<ContractStateFile> {
     // Minimal placeholder transform:
     // - updates schema_version
     // - no storage rewriting is performed
@@ -103,7 +106,10 @@ pub async fn run_transform(
     let _ = config; // reserved for future RPC-based transforms
 
     let input = read_state_file(&in_file)?;
-    let args = TransformArgs { from_version, to_version };
+    let args = TransformArgs {
+        from_version,
+        to_version,
+    };
     let transformed = transform_state(input.clone(), &args)?;
 
     if dry_run {
@@ -114,7 +120,7 @@ pub async fn run_transform(
         };
         emit(
             output,
-            "Transform dry-run completed" ,
+            "Transform dry-run completed",
             serde_json::json!({
                 "dry_run": true,
                 "from_version": from_version,
@@ -131,7 +137,7 @@ pub async fn run_transform(
     write_state_file(&out_file, &transformed)?;
     emit(
         output,
-        "Transform completed" ,
+        "Transform completed",
         serde_json::json!({
             "dry_run": false,
             "from_version": from_version,
@@ -233,17 +239,17 @@ pub async fn run_rollback_metadata(
     let state = serde_json::json!({
         "contract_id": contract_id,
         "source_wasm_hash": null,
-        "note": "Rollback metadata extraction is not implemented in this environment; storage/WASM inspection primitives are incomplete in this CLI." 
+        "note": "Rollback metadata extraction is not implemented in this environment; storage/WASM inspection primitives are incomplete in this CLI."
     });
 
-    fs::write(&wasm_hash_out, serde_json::to_vec_pretty(&state)?)
-        .with_context(|| format!("failed to write rollback metadata to {}", wasm_hash_out.display()))?;
+    fs::write(&wasm_hash_out, serde_json::to_vec_pretty(&state)?).with_context(|| {
+        format!(
+            "failed to write rollback metadata to {}",
+            wasm_hash_out.display()
+        )
+    })?;
 
-    emit(
-        output,
-        "Rollback metadata generated",
-        state,
-    );
+    emit(output, "Rollback metadata generated", state);
 
     Ok(())
 }
@@ -262,15 +268,13 @@ pub async fn run_export(
             exported_at_unix: Some(0),
             note: Some("Mock export".to_string()),
         },
-        scopes: vec![
-            StorageEntry {
-                scope: StorageScope::Persistent,
-                key: "mock_key".to_string(),
-                value: "mock_value".to_string(),
-            }
-        ],
+        scopes: vec![StorageEntry {
+            scope: StorageScope::Persistent,
+            key: "mock_key".to_string(),
+            value: "mock_value".to_string(),
+        }],
     };
-    
+
     if dry_run {
         emit(
             output,
@@ -306,12 +310,16 @@ pub async fn run_import(
     in_file: PathBuf,
 ) -> anyhow::Result<()> {
     let state = read_state_file(&in_file)?;
-    
+
     // Simulate transaction batching for large datasets
     let total_entries = state.scopes.len();
     let batch_size = 100;
-    let batches = if total_entries > 0 { (total_entries + batch_size - 1) / batch_size } else { 0 };
-    
+    let batches = if total_entries > 0 {
+        (total_entries + batch_size - 1) / batch_size
+    } else {
+        0
+    };
+
     if dry_run {
         emit(
             output,
@@ -340,4 +348,3 @@ pub async fn run_import(
     );
     Ok(())
 }
-

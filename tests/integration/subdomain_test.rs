@@ -1,4 +1,7 @@
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env, String};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env, String,
+};
 
 use xlm_ns_registry::{NameState, RegistryContract, RegistryContractClient};
 use xlm_ns_resolver::ResolverContract;
@@ -149,32 +152,27 @@ fn parent_expiry_purges_subdomains_and_allows_reregistration() {
 
     registry.initialize(&admin);
     subdomain.initialize(&admin);
-    subdomain
-        .set_registry_contract(&registry_contract_id);
+    subdomain.set_registry_contract(&registry_contract_id);
 
-    registry
-        .register(
-            &parent,
-            &old_parent_owner,
-            &None::<String>,
-            &None::<String>,
-            &start,
-            &expiry,
-            &grace_end,
-        );
-    subdomain
-        .register_parent(&parent, &old_parent_owner);
-    subdomain
-        .add_controller(&parent, &old_parent_owner, &controller);
+    registry.register(
+        &parent,
+        &old_parent_owner,
+        &None::<String>,
+        &None::<String>,
+        &start,
+        &expiry,
+        &grace_end,
+    );
+    subdomain.register_parent(&parent, &old_parent_owner);
+    subdomain.add_controller(&parent, &old_parent_owner, &controller);
 
-    let first_fqdn = subdomain
-        .create(
-            &label,
-            &parent,
-            &controller,
-            &old_subdomain_owner,
-            &(start + 1),
-        );
+    let first_fqdn = subdomain.create(
+        &label,
+        &parent,
+        &controller,
+        &old_subdomain_owner,
+        &(start + 1),
+    );
     assert_eq!(first_fqdn, fqdn);
     assert!(subdomain.exists(&fqdn));
     assert_eq!(subdomain.subdomains_for_parent(&parent).len(), 1);
@@ -228,27 +226,24 @@ fn parent_expiry_purges_subdomains_and_allows_reregistration() {
     );
     assert!(subdomain.parent(&parent).is_none());
 
-    registry
-        .register(
-            &parent,
-            &new_parent_owner,
-            &None::<String>,
-            &None::<String>,
-            &(grace_end + 1),
-            &renewed_expiry,
-            &renewed_grace_end,
-        );
-    subdomain
-        .register_parent(&parent, &new_parent_owner);
+    registry.register(
+        &parent,
+        &new_parent_owner,
+        &None::<String>,
+        &None::<String>,
+        &(grace_end + 1),
+        &renewed_expiry,
+        &renewed_grace_end,
+    );
+    subdomain.register_parent(&parent, &new_parent_owner);
 
-    let recreated_fqdn = subdomain
-        .create(
-            &label,
-            &parent,
-            &new_parent_owner,
-            &new_subdomain_owner,
-            &(grace_end + 2),
-        );
+    let recreated_fqdn = subdomain.create(
+        &label,
+        &parent,
+        &new_parent_owner,
+        &new_subdomain_owner,
+        &(grace_end + 2),
+    );
 
     assert_eq!(recreated_fqdn, fqdn);
     assert!(subdomain.exists(&fqdn));
@@ -290,28 +285,25 @@ fn subdomain_transfer_attempts_fail_during_parent_grace_period() {
 
     registry.initialize(&admin);
     subdomain.initialize(&admin);
-    subdomain
-        .set_registry_contract(&registry_contract_id);
+    subdomain.set_registry_contract(&registry_contract_id);
 
-    registry
-        .register(
-            &parent,
-            &parent_owner,
-            &None::<String>,
-            &None::<String>,
-            &start,
-            &expiry,
-            &grace_end,
-        );
+    registry.register(
+        &parent,
+        &parent_owner,
+        &None::<String>,
+        &None::<String>,
+        &start,
+        &expiry,
+        &grace_end,
+    );
     subdomain.register_parent(&parent, &parent_owner);
-    subdomain
-        .create(
-            &String::from_str(&env, "pay"),
-            &parent,
-            &parent_owner,
-            &subdomain_owner,
-            &(start + 1),
-        );
+    subdomain.create(
+        &String::from_str(&env, "pay"),
+        &parent,
+        &parent_owner,
+        &subdomain_owner,
+        &(start + 1),
+    );
 
     env.ledger().set_timestamp(expiry + 1);
     assert_eq!(

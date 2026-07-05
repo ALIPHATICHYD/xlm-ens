@@ -224,8 +224,7 @@ impl ResolverContract {
         }
         .publish(&env);
 
-        env.deployer()
-            .update_current_contract_wasm(new_wasm_hash);
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
 
         Ok(())
     }
@@ -238,7 +237,7 @@ impl ResolverContract {
         now_unix: u64,
     ) -> Result<(), ResolverError> {
         owner.require_auth();
-        validate_fqdn_soroban(&name).map_err(|_| ResolverError::Validation)?; 
+        validate_fqdn_soroban(&name).map_err(|_| ResolverError::Validation)?;
         let registry_backed_owner = registry_owner(&env, &name, now_unix)?;
         let canonical_owner = match registry_backed_owner.clone() {
             Some(registry_owner) => {

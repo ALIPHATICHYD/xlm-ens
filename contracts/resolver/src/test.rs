@@ -11,7 +11,9 @@ mod tests {
     use xlm_ns_registry::{RegistryContract, RegistryContractClient};
     use xlm_ns_subdomain::{SubdomainContract, SubdomainContractClient};
 
-    fn setup_with_subdomain(depth: u32) -> (
+    fn setup_with_subdomain(
+        depth: u32,
+    ) -> (
         Env,
         ResolverContractClient<'static>,
         RegistryContractClient<'static>,

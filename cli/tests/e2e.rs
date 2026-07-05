@@ -73,7 +73,10 @@ fn registry_resolver_args() -> Vec<String> {
 }
 
 fn registrar_registry_args() -> Vec<String> {
-    args_for(&[("registrar-contract-id", 'B'), ("registry-contract-id", 'A')])
+    args_for(&[
+        ("registrar-contract-id", 'B'),
+        ("registry-contract-id", 'A'),
+    ])
 }
 
 fn csv_rows(output: &[u8]) -> Vec<Vec<String>> {
@@ -220,11 +223,7 @@ fn no_color_flag_disables_ansi_sequences() {
 #[test]
 fn no_color_env_var_disables_ansi_sequences() {
     let mut args = registrar_args();
-    args.extend([
-        "register".into(),
-        "alice".into(),
-        account_address('H'),
-    ]);
+    args.extend(["register".into(), "alice".into(), account_address('H')]);
 
     let output = bin()
         .env("NO_COLOR", "1")

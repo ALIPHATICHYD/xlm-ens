@@ -22,7 +22,7 @@ mod tests {
         Address,
     ) {
         let env = Env::default();
-        env.mock_all_auths();
+        env.mock_all_auths_allowing_non_root_auth();
 
         let registry_id = env.register(RegistryContract, ());
         let resolver_id = env.register(ResolverContract, ());
@@ -45,6 +45,7 @@ mod tests {
     #[test]
     fn persists_forward_reverse_and_primary_resolution_records() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -81,6 +82,7 @@ mod tests {
     #[test]
     fn removes_forward_reverse_and_primary_records() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -224,7 +226,7 @@ mod tests {
     #[test]
     fn transfer_clears_old_owner_reverse_and_does_not_set_new_owner_reverse() {
         let env = Env::default();
-        env.mock_all_auths();
+        env.mock_all_auths_allowing_non_root_auth();
 
         let registry_id = env.register(RegistryContract, ());
         let resolver_id = env.register(ResolverContract, ());
@@ -265,7 +267,7 @@ mod tests {
     #[test]
     fn reverse_lookup_lazily_cleans_stale_entries_after_registry_transfer() {
         let env = Env::default();
-        env.mock_all_auths();
+        env.mock_all_auths_allowing_non_root_auth();
 
         let registry_id = env.register(RegistryContract, ());
         let resolver_id = env.register(ResolverContract, ());
@@ -312,6 +314,7 @@ mod tests {
     #[test]
     fn rejects_text_record_updates_from_non_owner() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -340,6 +343,7 @@ mod tests {
     #[test]
     fn rejects_record_removal_from_non_owner() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -362,6 +366,7 @@ mod tests {
     #[test]
     fn enforces_text_record_limit_but_allows_updating_existing_key_at_limit() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -418,6 +423,7 @@ mod tests {
     #[test]
     fn reverse_lookup_prefers_primary_name_when_present() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -439,6 +445,7 @@ mod tests {
     #[test]
     fn removes_old_primary_mappings_when_address_changes() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -464,6 +471,7 @@ mod tests {
     #[test]
     fn updating_address_preserves_text_records() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -502,6 +510,7 @@ mod tests {
     #[test]
     fn enforces_text_record_value_size_limit() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -546,6 +555,7 @@ mod tests {
     #[test]
     fn supports_multi_chain_address_records() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -587,6 +597,7 @@ mod tests {
     #[test]
     fn batch_resolve_returns_records_for_multiple_names() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -614,6 +625,7 @@ mod tests {
     #[test]
     fn batch_reverse_returns_names_for_multiple_addresses() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -643,6 +655,7 @@ mod tests {
     #[test]
     fn accepts_valid_text_record_keys() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
         let owner = Address::generate(&env);
@@ -678,6 +691,7 @@ mod tests {
     #[test]
     fn rejects_uppercase_text_record_key() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
         let owner = Address::generate(&env);
@@ -698,6 +712,7 @@ mod tests {
     #[test]
     fn rejects_empty_text_record_key() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
         let owner = Address::generate(&env);
@@ -718,6 +733,7 @@ mod tests {
     #[test]
     fn rejects_overlong_text_record_key() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
         let owner = Address::generate(&env);
@@ -739,6 +755,7 @@ mod tests {
     #[test]
     fn rejects_text_record_key_with_space() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
         let owner = Address::generate(&env);
@@ -763,6 +780,7 @@ mod tests {
     #[test]
     fn set_record_emits_forward_and_reverse_events() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -782,6 +800,7 @@ mod tests {
     #[test]
     fn set_text_record_emits_event() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -804,6 +823,7 @@ mod tests {
     #[test]
     fn remove_record_emits_event_and_clears_mappings() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -822,6 +842,7 @@ mod tests {
     #[test]
     fn set_primary_name_emits_event() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -843,6 +864,7 @@ mod tests {
     #[test]
     fn batch_set_applies_address_and_text_ops_atomically() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -888,6 +910,7 @@ mod tests {
     #[test]
     fn batch_set_rejects_oversized_payloads() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -913,6 +936,7 @@ mod tests {
     #[test]
     fn batch_set_rejects_non_owner() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -934,6 +958,7 @@ mod tests {
     #[test]
     fn batch_set_partial_failure_skips_invalid_ops_and_applies_valid_ones() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -981,6 +1006,7 @@ mod tests {
     #[test]
     fn property_repeated_address_replacement_keeps_reverse_consistent() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -1015,6 +1041,7 @@ mod tests {
     #[test]
     fn property_primary_name_changes_remain_consistent() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -1052,6 +1079,7 @@ mod tests {
     #[test]
     fn property_remove_and_reregister_stays_consistent() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -1077,6 +1105,7 @@ mod tests {
     #[test]
     fn property_text_record_churn_near_limit_stays_consistent() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -1132,6 +1161,7 @@ mod tests {
     #[test]
     fn property_batch_set_sequence_remains_consistent() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
 
@@ -1171,6 +1201,7 @@ mod tests {
     #[test]
     fn version_is_exposed() {
         let env = Env::default();
+        env.mock_all_auths_allowing_non_root_auth();
         let contract_id = env.register(ResolverContract, ());
         let client = ResolverContractClient::new(&env, &contract_id);
         assert_eq!(client.version(), 1);

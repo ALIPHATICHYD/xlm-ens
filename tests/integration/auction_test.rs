@@ -50,6 +50,9 @@ mod auction_integration {
         let (env, client) = setup_env();
         env.mock_all_auths();
 
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
         let (asset, token_admin, token) = setup_token(&env);
         let treasury = Address::generate(&env);
 
@@ -106,6 +109,9 @@ mod auction_integration {
         let (env, client) = setup_env();
         env.mock_all_auths();
 
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
         let (asset, token_admin, token) = setup_token(&env);
         let treasury = Address::generate(&env);
 
@@ -155,6 +161,9 @@ mod auction_integration {
     fn test_auction_single_bid_clears_at_reserve() {
         let (env, client) = setup_env();
         env.mock_all_auths();
+
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
 
         let (asset, token_admin, token) = setup_token(&env);
         let treasury = Address::generate(&env);

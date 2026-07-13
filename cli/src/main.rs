@@ -516,8 +516,10 @@ async fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
     )
     .context("failed to load configuration")?;
 
-    if let Err(err) = validate_contract_policy(&cli.command, &contract_overrides, &config) {
-        return Err(anyhow::anyhow!(err));
+    if !cli.dry_run {
+        if let Err(err) = validate_contract_policy(&cli.command, &contract_overrides, &config) {
+            return Err(anyhow::anyhow!(err));
+        }
     }
 
     match cli.command {

@@ -879,7 +879,24 @@ fn cleanup_stale_reverse(env: &Env, address: &String, name: &String) {
 }
 
 fn reverse_lookup_matches_current_owner(env: &Env, name: &String, address: &String) -> bool {
-    let current_owner = if let Some(registry) = env
+    let record = match get_record(env, name).ok() {
+        Some(r) => r,
+        None => return false,
+    };
+
+    // Check the forward record still contains this address.
+    let addr_matches = record
+        .addresses
+        .get(String::from_str(env, DEFAULT_CHAIN))
+        .map(|stellar_addr| stellar_addr == *address)
+        .unwrap_or(false);
+    if !addr_matches {
+        return false;
+    }
+
+    // If a registry is configured, verify the record owner still matches
+    // the registry owner (guards against stale mappings after transfers).
+    if let Some(registry) = env
         .storage()
         .instance()
         .get::<_, Address>(&DataKey::Registry)
@@ -890,18 +907,12 @@ fn reverse_lookup_matches_current_owner(env: &Env, name: &String, address: &Stri
             &Symbol::new(env, "resolve"),
             (name.clone(), now_unix).into_val(env),
         ) {
-            Ok(Ok(entry)) => Some(entry.owner.to_string()),
-            _ => None,
+            Ok(Ok(entry)) => entry.owner == record.owner,
+            _ => false,
         }
     } else {
-        get_record(env, name)
-            .ok()
-            .map(|record| record.owner.to_string())
-    };
-
-    current_owner
-        .map(|owner| owner == *address)
-        .unwrap_or(false)
+        true
+    }
 }
 
 /// Write a record and unconditionally extend its TTL (#146).

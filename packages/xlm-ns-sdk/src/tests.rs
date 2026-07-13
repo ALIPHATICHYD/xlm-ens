@@ -983,11 +983,17 @@ mod tests {
                 .with_poll_final_status(false),
         );
 
+        // Test execute_with_retry directly — calling through renew() would
+        // route via verify_write_network() which intentionally swallows
+        // transport errors (the preflight network check is non-fatal).
+        let rpc_url = mock_server.uri();
         let err = client
-            .renew(RenewalRequest {
-                name: "retry.xlm".into(),
-                additional_years: 1,
-                signer: None,
+            .execute_with_retry("test_rate_limit", |http_client| {
+                let configured = "Test SDF Network ; September 2015".to_owned();
+                let rpc_url = rpc_url.clone();
+                async move {
+                    network::verify_network_passphrase(&configured, &rpc_url, &http_client).await
+                }
             })
             .await
             .unwrap_err();

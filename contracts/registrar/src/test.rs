@@ -702,14 +702,14 @@ mod tests {
 
         // Owner1 registers 5 names
         for i in 0..5 {
-            let label = String::from_str(&env, &format!("owner1_{}", i));
+            let label = String::from_str(&env, &format!("ownera{}", i));
             let quote = client.quote_registration(&label, &1, &now);
             client.register(&label, &owner1, &1, &quote.fee_stroops, &now);
         }
 
         // Owner2 should still be able to register 5 names
         for i in 0..5 {
-            let label = String::from_str(&env, &format!("owner2_{}", i));
+            let label = String::from_str(&env, &format!("ownerb{}", i));
             let quote = client.quote_registration(&label, &1, &now);
             client.register(&label, &owner2, &1, &quote.fee_stroops, &now);
         }
@@ -734,14 +734,14 @@ mod tests {
 
         // Register 5 names at time now
         for i in 0..5 {
-            let label = String::from_str(&env, &format!("window1_{}", i));
+            let label = String::from_str(&env, &format!("windowa{}", i));
             let quote = client.quote_registration(&label, &1, &now);
             client.register(&label, &owner, &1, &quote.fee_stroops, &now);
         }
 
         // Register 5 more names in a future time window
         for i in 0..5 {
-            let label = String::from_str(&env, &format!("window2_{}", i));
+            let label = String::from_str(&env, &format!("windowb{}", i));
             let quote = client.quote_registration(&label, &1, &future_window);
             client.register(&label, &owner, &1, &quote.fee_stroops, &future_window);
         }

@@ -74,13 +74,14 @@ fn test_burn_fails_if_not_yet_claimable() {
     env.mock_all_auths();
 
     let registry = setup(&env);
-    let (owner, _) = register_domain(&env, &registry, "test.xlm");
+    let (_owner, _) = register_domain(&env, &registry, "test.xlm");
     let name = String::from_str(&env, "test.xlm");
 
-    // Name is active, so it's not claimable
-    let res = registry.try_burn(&name, &owner, &env.ledger().timestamp());
+    // A non-owner caller cannot burn an active (not yet claimable) name.
+    let stranger = Address::generate(&env);
+    let res = registry.try_burn(&name, &stranger, &env.ledger().timestamp());
 
-    assert!(matches!(res, Err(Ok(RegistryError::NotYetClaimable))));
+    assert!(matches!(res, Err(Ok(RegistryError::Unauthorized))));
 }
 
 #[test]

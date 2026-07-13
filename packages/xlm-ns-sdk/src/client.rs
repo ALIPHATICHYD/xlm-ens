@@ -143,7 +143,7 @@ impl XlmNsClient {
     ///
     /// A single [`Client`] is created up front; each attempt receives a cheap
     /// [`Clone`] that reuses the underlying HTTP connection pool.
-    async fn execute_with_retry<T, F, Fut>(&self, operation: &str, f: F) -> Result<T, SdkError>
+    pub(crate) async fn execute_with_retry<T, F, Fut>(&self, operation: &str, f: F) -> Result<T, SdkError>
     where
         F: Fn(Client) -> Fut,
         Fut: Future<Output = Result<T, SdkError>>,

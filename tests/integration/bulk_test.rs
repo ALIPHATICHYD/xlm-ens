@@ -13,7 +13,7 @@ fn test_bulk_register_dry_run() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(file, "name1,1,G...")?;
     writeln!(file, "name2,2,G...")?;
 
-    let mut cmd = Command::cargo_bin("xlm-ns")?;
+    let mut cmd = Command::cargo_bin("xlm-ns-cli")?;
     cmd.arg("bulk")
         .arg("register")
         .arg("--file")
@@ -43,7 +43,7 @@ fn test_bulk_renew_dry_run() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(file, "name1,1")?;
     writeln!(file, "name2,2")?;
 
-    let mut cmd = Command::cargo_bin("xlm-ns")?;
+    let mut cmd = Command::cargo_bin("xlm-ns-cli")?;
     cmd.arg("bulk")
         .arg("renew")
         .arg("--file")

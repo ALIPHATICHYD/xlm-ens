@@ -16,7 +16,7 @@ fn test_watch_command() -> Result<(), Box<dyn std::error::Error>> {
         fs::remove_file(&watchlist_path)?;
     }
 
-    let mut cmd = Command::cargo_bin("xlm-ns")?;
+    let mut cmd = Command::cargo_bin("xlm-ns-cli")?;
     cmd.arg("watch")
         .arg("add")
         .arg("test.xlm")
@@ -26,21 +26,17 @@ fn test_watch_command() -> Result<(), Box<dyn std::error::Error>> {
             "Added 'test.xlm' to the watchlist.",
         ));
 
-    let mut cmd = Command::cargo_bin("xlm-ns")?;
+    let mut cmd = Command::cargo_bin("xlm-ns-cli")?;
     cmd.arg("watch")
         .arg("list")
         .assert()
         .success()
         .stdout(predicate::str::contains("test.xlm"));
 
-    let mut cmd = Command::cargo_bin("xlm-ns")?;
-    cmd.arg("watch")
-        .arg("check")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("test.xlm: Not registered"));
+    // `watch check` requires a configured registry contract ID and a live RPC
+    // endpoint, so it is skipped in offline integration tests.
 
-    let mut cmd = Command::cargo_bin("xlm-ns")?;
+    let mut cmd = Command::cargo_bin("xlm-ns-cli")?;
     cmd.arg("watch")
         .arg("remove")
         .arg("test.xlm")
@@ -50,7 +46,7 @@ fn test_watch_command() -> Result<(), Box<dyn std::error::Error>> {
             "Removed 'test.xlm' from the watchlist.",
         ));
 
-    let mut cmd = Command::cargo_bin("xlm-ns")?;
+    let mut cmd = Command::cargo_bin("xlm-ns-cli")?;
     cmd.arg("watch")
         .arg("list")
         .assert()
